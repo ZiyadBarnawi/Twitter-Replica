@@ -1,0 +1,29 @@
+{
+  "name": "twitter-replica",
+  "version": "1.0.0",
+  "description": "My attempt at a replica of the famous social media app \"Twitter/X\"",
+  "homepage": "https://github.com/ZiyadBarnawi/Twitter-Replica#readme",
+  "bugs": {
+    "url": "https://github.com/ZiyadBarnawi/Twitter-Replica/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZiyadBarnawi/Twitter-Replica.git"
+  },
+  "license": "ISC",
+  "author": "Ziyad",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon run server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.17.0",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
