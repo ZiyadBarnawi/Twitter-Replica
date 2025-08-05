@@ -5,18 +5,19 @@ const usersSchema = mongoose.Schema({
     type: String,
     required: [true, "username can't be null!"],
     unique: true,
+    trim: true,
   },
-  accountName: String,
-  email: String,
-  phoneNumber: String,
-  password: String,
-  bio: String,
+  accountName: { type: String, trim: true },
+  email: { type: String, trim: true },
+  phoneNumber: { type: String, trim: true },
+  password: { type: String, trim: true },
+  bio: { type: String, trim: true },
   birthDate: Date,
-  gender: String,
-  country: String,
-  city: String,
-  profilePic: String,
-  headerPic: String,
+  gender: { type: String, trim: true },
+  country: { type: String, trim: true },
+  city: { type: String, trim: true },
+  profilePic: { type: String, trim: true },
+  headerPic: { type: String, trim: true },
   verified: Boolean,
   externalLinks: [String],
 
@@ -24,15 +25,12 @@ const usersSchema = mongoose.Schema({
 
   retweets: {
     tweetsIds: [String],
-    count: Number,
   },
   likes: {
     tweetsIds: [String],
-    count: Number,
   },
   bookmarks: {
     tweetsIds: [String],
-    count: Number,
   },
 
   followers: {

@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 
-const privateMessage = mongoose.Schema({
+const privateMessageSchema = mongoose.Schema({
   senderId: Number,
-  content: String,
-  assets: String,
+  content: { type: String, trim: true },
+  assets: { type: String, trim: true },
   referenceMessageId: String,
   createdAt: { type: Date, default: Date.now() },
 });
-const PrivateMessages = mongoose.model("privateMessages", privateMessage);
+const PrivateMessages = mongoose.model("private_message", privateMessageSchema);
 module.exports = PrivateMessages;

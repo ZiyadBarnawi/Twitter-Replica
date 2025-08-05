@@ -1,23 +1,20 @@
 const mongoose = require("mongoose");
 const tweetSchema = mongoose.Schema({
-  userId: String,
+  user: { userId: String, username: String },
   referencedTweetId: String,
   communityId: String,
-  content: String,
+  content: { type: String, trim: true },
   tags: [String],
   retweets: {
     userId: [String],
-    count: Number,
   },
   likes: {
     userId: [String],
-    count: Number,
   },
   bookmarks: {
     userId: [String],
-    count: Number,
   },
-  assets: [{ assetId: Number }],
+  assets: [{ assetName: Number }],
   createdAt: { type: Date, default: Date.now() },
   lastUpdatedAt: Date,
 });
