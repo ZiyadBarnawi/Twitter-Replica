@@ -10,7 +10,7 @@ const usersSchema = mongoose.Schema({
   accountName: { type: String, trim: true },
   email: { type: String, trim: true },
   phoneNumber: { type: String, trim: true },
-  password: { type: String, trim: true },
+  password: { type: String, trim: true, select: false },
   bio: { type: String, trim: true },
   birthDate: Date,
   gender: { type: String, trim: true },

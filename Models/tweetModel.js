@@ -14,7 +14,7 @@ const tweetSchema = mongoose.Schema({
   bookmarks: {
     userId: [String],
   },
-  assets: [{ assetName: Number }],
+  assets: [{ assetName: String }],
   createdAt: { type: Date, default: Date.now() },
   lastUpdatedAt: Date,
 });

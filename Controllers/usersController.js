@@ -2,14 +2,41 @@ const Users = require("../Models/userModel");
 const Tweets = require("../Models/tweetModel");
 
 exports.getUsers = async (req, res) => {
-  let queryCopy = { ...req.query };
-  excludedParams = ["page", "sort", "limit", "fields"];
-  excludedParams.forEach((el) => {
-    delete queryCopy[el];
-  });
+  try {
+    let queryCopy = { ...req.query };
+    excludedParams = ["page", "sort", "limit", "fields"];
+    excludedParams.forEach((el) => {
+      delete queryCopy[el];
+    });
+    let query = Users.find(queryCopy);
+    if (req.query.sort) {
+      query = query.sort(req.query.sort.split(",").join(" "));
+    } else {
+      query = query.sort("createdAt");
+    }
+    if (req.query.fields) {
+      let fields = req.query.fields
+        .split(",")
+        .join(" ")
+        .replaceAll("password", "")
+        .replaceAll("email", "")
+        .replaceAll("phoneNumber", "")
+        .replaceAll("__v", "");
 
-  const users = await Users.find(queryCopy);
-  res.status(200).json({ status: "success", results: users.length, data: { users: users } });
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v -password -email -phoneNumber");
+    }
+
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 2;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+    const users = await query;
+    res.status(200).json({ status: "success", results: users.length, data: { users: users } });
+  } catch (err) {
+    res.status(500).json({ status: "fail", message: err });
+  }
 };
 
 exports.getUser = async (req, res) => {
@@ -53,11 +80,19 @@ exports.deleteUser = async (req, res) => {
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
 
 exports.getTweets = async (req, res) => {
+  let queryCopy = { ...req.query };
+  excludedParams = ["page", "sort", "limit", "fields"];
+  excludedParams.forEach((el) => {
+    delete queryCopy[el];
+  });
   let query = Tweets.find().where("user.username").equals(req.params.username);
-  if (req.query.words) {
+  if (queryCopy.words) {
     query = query
       .where("content")
-      .equals({ $regex: new RegExp(String.raw`${req.query.words}`), $options: "i" });
+      .equals({ $regex: new RegExp(String.raw`${queryCopy.words}`), $options: "i" });
+  }
+  if (req.query.sort) {
+    query = query.sort(req.query.sort);
   }
   const tweets = await query;
   res.status(200).json({ status: "success", results: tweets.length, data: { tweets } });
