@@ -11,4 +11,6 @@ router
   .patch(usersController.patchUser)
   .delete(usersController.deleteUser);
 
+router.route("/:username/:id").get(usersController.getTweet);
+
 module.exports = router;

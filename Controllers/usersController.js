@@ -1,5 +1,7 @@
 const Users = require("../Models/userModel");
 const Tweets = require("../Models/tweetModel");
+const mongoose = require("mongoose");
+const ApiFeatures = require("./../Utils/apiFeatures");
 
 exports.getUsers = async (req, res) => {
   try {
@@ -10,37 +12,31 @@ exports.getUsers = async (req, res) => {
     });
     let query = Users.find(queryCopy);
     if (req.query.sort) {
-      query = query.sort(req.query.sort.split(",").join(" "));
+      query = ApiFeatures.sort(query, req.query);
     } else {
       query = query.sort("createdAt");
     }
-    if (req.query.fields) {
-      let fields = req.query.fields
-        .split(",")
-        .join(" ")
-        .replaceAll("password", "")
-        .replaceAll("email", "")
-        .replaceAll("phoneNumber", "")
-        .replaceAll("__v", "");
 
-      query = query.select(fields);
-    } else {
-      query = query.select("-__v -password -email -phoneNumber");
-    }
+    const excludedFields = ["__v", "password", "email", "phoneNumber"];
+    query = ApiFeatures.fields(query, req.query, excludedFields);
 
-    const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 2;
-    const skip = (page - 1) * limit;
-    query = query.skip(skip).limit(limit);
+    query = ApiFeatures.skip(query, req.query, {
+      page: req.query.page ?? 1,
+      limit: req.query.limit ?? 10,
+    });
+
     const users = await query;
     res.status(200).json({ status: "success", results: users.length, data: { users: users } });
   } catch (err) {
-    res.status(500).json({ status: "fail", message: err });
+    res.status(404).json({ status: "fail", message: err });
   }
 };
 
 exports.getUser = async (req, res) => {
-  const user = await Users.findOne({ username: req.params.username });
+  let query = Users.findOne({ username: req.params.username });
+  const excludedFields = ["__v", "password", "email", "phoneNumber"];
+  query = ApiFeatures.fields(query, req.query, excludedFields);
+  const user = await query;
   if (!user) res.status(404);
   res.json({ status: user === undefined ? "fail" : "success", data: { user: user ?? null } });
 };
@@ -77,29 +73,49 @@ exports.deleteUser = async (req, res) => {
     res.status(400).json({ status: "fail", message: err });
   }
 };
+
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
 
 exports.getTweets = async (req, res) => {
-  let queryCopy = { ...req.query };
-  excludedParams = ["page", "sort", "limit", "fields"];
-  excludedParams.forEach((el) => {
-    delete queryCopy[el];
-  });
-  let query = Tweets.find().where("user.username").equals(req.params.username);
-  if (queryCopy.words) {
-    query = query
-      .where("content")
-      .equals({ $regex: new RegExp(String.raw`${queryCopy.words}`), $options: "i" });
+  try {
+    let queryCopy = { ...req.query };
+    excludedParams = ["page", "sort", "limit", "fields"];
+    excludedParams.forEach((el) => {
+      delete queryCopy[el];
+    });
+    let query = Tweets.find().where("user.username").equals(req.params.username);
+    if (queryCopy.words) {
+      query = query
+        .where("content")
+        .equals({ $regex: new RegExp(String.raw`${queryCopy.words}`), $options: "i" });
+    }
+    if (req.query.sort) {
+      query = ApiFeatures.sort(query, req.query);
+    } else {
+      query = query.sort("createdAt");
+    }
+    //TODO: only show the likes count in the request is not from the account owner
+    let excludedFields = ["__v"];
+    query = ApiFeatures.fields(query, req.query, excludedFields);
+
+    if (req.query.page) {
+      query = ApiFeatures.skip(query, req.query, { page: req.query.page, limit: req.query.limit });
+    }
+    const tweets = await query;
+
+    res.status(200).json({ status: "success", results: tweets.length, data: { tweets } });
+  } catch (err) {
+    res.status(500).json({ status: "fail", message: err });
   }
-  if (req.query.sort) {
-    query = query.sort(req.query.sort);
-  }
-  const tweets = await query;
-  res.status(200).json({ status: "success", results: tweets.length, data: { tweets } });
 };
 
 exports.getTweet = async (req, res) => {
-  const tweet = await Tweets.findById(req.params.id);
+  let query = Tweets.find()
+    .where("_id")
+    .equals(req.params.id)
+    .where("user.username")
+    .equals(req.params.username);
+  const tweet = await query;
   res.status(200).json({ status: "success", data: { tweet } });
 };
 

@@ -6,12 +6,15 @@ const tweetSchema = mongoose.Schema({
   content: { type: String, trim: true },
   tags: [String],
   retweets: {
+    count: Number,
     userId: [String],
   },
   likes: {
+    count: Number,
     userId: [String],
   },
   bookmarks: {
+    count: Number,
     userId: [String],
   },
   assets: [{ assetName: String }],
