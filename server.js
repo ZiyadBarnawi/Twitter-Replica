@@ -1,8 +1,6 @@
-const dotenv = require("dotenv");
-const mongoose = require("mongoose");
+import { mongoose } from "mongoose";
+import { app } from "./app.js";
 
-dotenv.config({ path: "./config.env" });
-let app = require("./app");
 try {
   mongoose.connect(process.env.LOCAL_DATABASE).then((con) => {
     if (con.connection.readyState == 1) {

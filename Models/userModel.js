@@ -1,16 +1,36 @@
-const mongoose = require("mongoose");
-
+import { mongoose } from "mongoose";
+import validator from "validator";
 const usersSchema = mongoose.Schema({
   username: {
     type: String,
     required: [true, "username can't be null!"],
     unique: true,
     trim: true,
+    validate: {
+      validator: validator.isAlpha,
+      message: "The username can't have special characters",
+    },
   },
   accountName: { type: String, trim: true },
-  email: { type: String, trim: true, select: false },
-  phoneNumber: { type: String, trim: true, select: false },
-  password: { type: String, trim: true, select: false },
+  email: {
+    type: String,
+    trim: true,
+    select: false,
+    validate: { validator: validator.isEmail, message: "Not a valid email format" },
+  },
+  phoneNumber: {
+    type: String,
+    trim: true,
+    select: false,
+    maxLength: [13, "max length exceeded"],
+    minLength: [13, "min length not meet"],
+  },
+  password: {
+    type: String,
+    trim: true,
+    select: false,
+    maxLength: [16, "password max length exceeded"],
+  },
   bio: { type: String, trim: true },
   birthDate: Date,
   gender: { type: String, trim: true },
@@ -50,4 +70,4 @@ const usersSchema = mongoose.Schema({
 });
 
 const Users = mongoose.model("Users", usersSchema);
-module.exports = Users;
+export { Users };

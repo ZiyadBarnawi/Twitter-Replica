@@ -1,8 +1,12 @@
-const express = require("express");
+import dotenv from "dotenv";
+import express from "express";
+import morgan from "morgan";
+import { router as usersRouter } from "./Routers/usersRouter.js";
+import { router as tweetsRouter } from "./Routers/tweetsRouter.js";
+import { OperationalErrors } from "./Utils/operationalErrors.js";
+import { globalErrorHandler } from "./Controllers/errorsController.js";
+dotenv.config({ path: "./config.env" });
 
-const morgan = require("morgan");
-const usersRouter = require("./Routers/usersRouter");
-const tweetsRouter = require("./Routers/tweetsRouter");
 const app = express();
 
 if (process.env.NODE_ENV === "development") {
@@ -13,4 +17,10 @@ app.use(express.json());
 app.use(`/api/v1/users`, usersRouter);
 app.use(`/api/v1/tweets`, tweetsRouter);
 
-module.exports = app;
+app.all("{*splat}", (req, res, next) => {
+  next(new OperationalErrors(`The route ${req.originalUrl} was not found`, 404));
+});
+
+app.use(globalErrorHandler);
+
+export { app };

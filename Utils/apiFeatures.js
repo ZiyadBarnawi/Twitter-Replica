@@ -1,4 +1,4 @@
-module.exports = class {
+export class ApiFeatures {
   constructor(query, queryString) {
     this.query = query;
     this.queryString = queryString;
@@ -34,4 +34,4 @@ module.exports = class {
     const skip = (page - 1) * limit;
     return query.skip(skip).limit(limit);
   }
-};
+}

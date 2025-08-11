@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import { mongoose } from "mongoose";
 
 const groupChatSchema = mongoose.Schema({
   chatName: String,
@@ -8,4 +8,4 @@ const groupChatSchema = mongoose.Schema({
   createdAt: { type: Date, default: Date.now() },
 });
 const GroupChat = mongoose.model("group_chat", groupChatSchema);
-module.exports = GroupChat;
+export { GroupChat };

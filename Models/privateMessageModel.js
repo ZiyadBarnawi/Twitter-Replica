@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import {mongoose} from "mongoose";
 
 const privateMessageSchema = mongoose.Schema({
   senderId: Number,
@@ -8,4 +8,4 @@ const privateMessageSchema = mongoose.Schema({
   createdAt: { type: Date, default: Date.now() },
 });
 const PrivateMessages = mongoose.model("private_message", privateMessageSchema);
-module.exports = PrivateMessages;
+export { PrivateMessages };

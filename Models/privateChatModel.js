@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import {mongoose} from "mongoose";
 
 const privateChatSchema = mongoose.Schema({
   members: [{ userId: Number, username: String, accountName: String }],
@@ -6,4 +6,4 @@ const privateChatSchema = mongoose.Schema({
   createdAt: { type: Date, default: Date.now() },
 });
 const privateChat = mongoose.model("private_chat", privateChatSchema);
-module.exports = privateChat;
+export { privateChat };
