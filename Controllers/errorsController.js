@@ -15,7 +15,7 @@ export const globalErrorHandler = (err, req, res, next) => {
     } else {
       res.status(500).json({
         status: "error",
-        message: "An unexpected error has occurred",
+        message: "An unexpected internal error has occurred",
       });
     }
   }

@@ -59,7 +59,11 @@ export const patchUser = catchAsync(async (req, res, next) => {
 });
 
 export const deleteUser = catchAsync(async (req, res, next) => {
-  await Users.findOneAndDelete({ username: req.params.username });
+  const user = await Users.findOneAndDelete(
+    { username: req.params.username },
+    { includeResultMetadata: true }
+  );
+  if (!user.value) return next(new OperationalErrors("No user found", 404));
   res.status(204).json({ status: "success" });
 });
 
@@ -114,7 +118,7 @@ export const addTweet = catchAsync(async (req, res, next) => {
 });
 
 export const patchTweet = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOneAndUpdate({ _id: req.body._id }, req.body, {
+  const tweet = await Tweets.findOneAndUpdate({ _id: req.body.id }, req.body, {
     lean: true,
     returnDocument: "after",
     runValidators: true,
@@ -125,38 +129,61 @@ export const patchTweet = catchAsync(async (req, res, next) => {
 });
 
 export const deleteTweet = catchAsync(async (req, res, next) => {
-  await Tweets.findOneAndDelete({ _id: req.params._id });
+  const tweet = await Tweets.findOneAndDelete(
+    { _id: req.params.id },
+    { includeResultMetadata: true }
+  );
+
+  if (!tweet.value) return next(new OperationalErrors("No Tweet were found", 404));
+
   res.status(204).json({ status: "success" });
 });
 
 export const retweet = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
+  if (!tweet?.retweets) return next(new OperationalErrors("No tweet found with this ID", 400));
+  if (tweet.retweets.userId.includes(req.body._id))
+    return next(new OperationalErrors("Already retweeted this tweet", 400));
 
-  if (tweet.retweets.userId.includes(req.body._id)) {
-    return res.status(400).json({ status: "fail", message: "already retweeted" });
-  }
   tweet.retweets.userId.push(req.body._id);
   tweet.$isNew = false;
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
 });
+
 export const like = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
-  if (tweet.likes.userId.includes(req.body._id)) {
-    return res.status(400).json({ status: "fail", message: "already liked" });
-  }
+
+  if (!tweet?.likes) return next(new OperationalErrors("No tweet found with this ID", 400));
+
+  if (tweet.likes.userId.includes(req.body._id))
+    return next(new OperationalErrors("Already liked this tweets", 400));
+
   tweet.likes.userId.push(req.body._id);
   tweet.$isNew = false;
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
 });
+
 export const bookmark = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
-  if (tweet.bookmarks.userId.includes(req.body._id)) {
-    return res.status(400).json({ status: "fail", message: "already bookmarked" });
-  }
+  if (!tweet?.bookmarks) return next(new OperationalErrors("No tweet found with this ID", 400));
+  if (tweet.bookmarks.userId.includes(req.body._id))
+    return next(new OperationalErrors("Already bookmarked this tweet", 400));
+
   tweet.bookmarks.userId.push(req.body._id);
   tweet.$isNew = false;
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
+});
+
+export const deleteRetweet = catchAsync(async (req, res, next) => {
+  const tweet = await Tweets.findById(req.params.id);
+  if (!tweet) return next(new OperationalErrors("no tweet found", 404));
+  let userIdIndex = tweet.retweets.userId.findIndex((el) => el === req.body._id);
+  if (userIdIndex === -1) return next(new OperationalErrors("the tweet is not retweeted", 400));
+
+  tweet.retweets.userId.splice(userIdIndex, 1);
+  tweet.save();
+  res.status(204).send();
 });

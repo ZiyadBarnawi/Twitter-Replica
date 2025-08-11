@@ -6,6 +6,7 @@ const tweetSchema = mongoose.Schema(
     communityId: String,
     content: {
       type: String,
+      required: [true, "can't post an empty tweet"],
       trim: true,
       maxLength: [280, "max length exceeded"],
       minLength: [1, "min length not meet"],
