@@ -42,19 +42,19 @@ export const getUser = catchAsync(async (req, res, next) => {
 });
 
 export const addUser = catchAsync(async (req, res, next) => {
+  //TODO: Extract only the fields you want to insert into the database so the user can't register himself as verified
   let user = await Users.create(req.body);
   user.save();
+  //TODO: Don't send the hashed password back to the user
   res.status(201).json({ status: "success", data: { user } });
 });
 
 export const patchUser = catchAsync(async (req, res, next) => {
-  const user = await Users.findOneAndUpdate({ username: req.params.username }, req.body, {
-    lean: true,
-    returnDocument: "after",
-    runValidators: true,
-  });
+  //TODO: currently this doesn't validate against the old document to see if either email or phoneNumber are not nulls.
+  // solve this later after searching for a solution
+  const user = await Users.updateOne({ username: req.params.username }, req.body);
   if (!user) return next(new OperationalErrors("No user found", 404));
-
+  //TODO: use the token id here and use findByIdAndUpdate
   res.json({ status: "success", data: { user } });
 });
 

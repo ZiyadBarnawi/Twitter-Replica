@@ -29,8 +29,8 @@ export class ApiFeatures {
     return query.limit(queryString.limit);
   }
   static skip(query, queryString, options = { page: 1, limit: 10 }) {
-    const page = queryString.page * 1 || 1;
-    const limit = queryString.limit * 1 || 10;
+    const page = queryString.page * 1 || options.page;
+    const limit = queryString.limit * 1 || options.limit;
     const skip = (page - 1) * limit;
     return query.skip(skip).limit(limit);
   }

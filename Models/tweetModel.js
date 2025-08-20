@@ -37,10 +37,13 @@ tweetSchema.virtual("bookmarksCount").get(function () {
   return this?.bookmarks?.userId?.length || 0;
 });
 
-tweetSchema.pre("find", function (next) {
-  this.find().where("username").equals();
-  next();
-});
+// TODO: currently if you exclude the likes array, the virtual property will always be 0.
+//  find a way after implementing authorization and JWT
+
+// tweetSchema.pre("find", function (next) {
+//   this.find().where("username").equals();
+//   next();
+// });
 
 const Tweets = mongoose.model("Tweets", tweetSchema);
 
