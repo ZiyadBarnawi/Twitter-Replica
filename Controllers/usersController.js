@@ -1,6 +1,5 @@
 import { Users } from "./../Models/userModel.js";
 import { Tweets } from "../Models/tweetModel.js";
-import { mongoose } from "mongoose";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
@@ -42,10 +41,26 @@ export const getUser = catchAsync(async (req, res, next) => {
 });
 
 export const addUser = catchAsync(async (req, res, next) => {
-  //TODO: Extract only the fields you want to insert into the database so the user can't register himself as verified
+  // const {
+  //   username,
+  //   accountName,
+  //   phoneNUmber,
+  //   email,
+  //   password,
+  //   bio,
+  //   externalLinks,
+  //   city,
+  //   country,
+  //   birthDate,
+  //   gender,
+  //   profilePic,
+  //   headerPic,
+  // } = req.body;
   let user = await Users.create(req.body);
   user.save();
+
   //TODO: Don't send the hashed password back to the user
+  delete user.password;
   res.status(201).json({ status: "success", data: { user } });
 });
 

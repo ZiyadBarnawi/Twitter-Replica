@@ -108,6 +108,9 @@ usersSchema.pre("updateOne", function (next) {
 
   next();
 });
+usersSchema.method("validatePassword", async function (sentPassword, actualPassword) {
+  return await bcrypt.compare(sentPassword, actualPassword);
+});
 const Users = mongoose.model("Users", usersSchema);
 
 export { Users };
