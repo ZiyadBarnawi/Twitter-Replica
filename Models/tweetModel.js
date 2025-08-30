@@ -6,6 +6,7 @@ const tweetSchema = mongoose.Schema(
     communityId: String,
     content: {
       type: String,
+      required: [true, "can't post an empty tweet"],
       trim: true,
       maxLength: [280, "max length exceeded"],
       minLength: [1, "min length not meet"],
@@ -36,10 +37,13 @@ tweetSchema.virtual("bookmarksCount").get(function () {
   return this?.bookmarks?.userId?.length || 0;
 });
 
-tweetSchema.pre("find", function (next) {
-  this.find().where("username").equals();
-  next();
-});
+// TODO: currently if you exclude the likes array, the virtual property will always be 0.
+//  find a way after implementing authorization and JWT
+
+// tweetSchema.pre("find", function (next) {
+//   this.find().where("username").equals();
+//   next();
+// });
 
 const Tweets = mongoose.model("Tweets", tweetSchema);
 
