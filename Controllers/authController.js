@@ -45,19 +45,22 @@ export const signup = catchAsync(async (req, res, next) => {
 export const login = catchAsync(async (req, res, next) => {
   const { email, username, phoneNumber, password } = req.body;
 
-  if (!email && !phoneNumber && !username) {
+  if (!email && !phoneNumber && !username)
     return next(new OperationalErrors("Please provide an email, username, or a phone number", 400));
-  }
+
   if (!password) return next(new OperationalErrors("Please provide a password", 400));
 
-  if (email) {
-    const user = await Users.findOne({ email }).select("+password");
-    console.log(await user.validatePassword(password, user.password));
-  } else if (phoneNumber) {
-    const user = await Users.findOne({ phoneNumber }).select("+password");
-  } else if (username) {
-    const user = await Users.findOne({ username }).select("+password");
-  }
-  const token = "";
+  let user;
+  if (username) user = await Users.findOne({ username }).select("+password username");
+  else if (email) user = await Users.findOne({ email }).select("+password username");
+  else if (phoneNumber) user = await Users.findOne({ phoneNumber }).select("+password username");
+
+  if (!user) next(new OperationalErrors("Invalid user credentials", 401));
+  const valid = await user.validatePassword(password, user.password);
+  if (!valid) next(new OperationalErrors("Invalid user credentials", 401));
+
+  const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, {
+    expiresIn: "60Days",
+  });
   res.status(200).json({ status: "success", token });
 });
