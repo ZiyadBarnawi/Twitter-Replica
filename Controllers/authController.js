@@ -1,3 +1,4 @@
+import { promisify } from "util";
 import { Users } from "./../Models/userModel.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import jwt from "jsonwebtoken";
@@ -63,4 +64,16 @@ export const login = catchAsync(async (req, res, next) => {
     expiresIn: "60Days",
   });
   res.status(200).json({ status: "success", token });
+});
+
+export const protect = catchAsync(async (req, res, next) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+  if (!token) next(new OperationalErrors("You are not logged in!", 401));
+
+  const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+  next();
 });
