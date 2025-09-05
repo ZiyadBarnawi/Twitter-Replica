@@ -41,26 +41,8 @@ export const getUser = catchAsync(async (req, res, next) => {
 });
 
 export const addUser = catchAsync(async (req, res, next) => {
-  // const {
-  //   username,
-  //   accountName,
-  //   phoneNUmber,
-  //   email,
-  //   password,
-  //   bio,
-  //   externalLinks,
-  //   city,
-  //   country,
-  //   birthDate,
-  //   gender,
-  //   profilePic,
-  //   headerPic,
-  // } = req.body;
   let user = await Users.create(req.body);
   user.save();
-
-  //TODO: Don't send the hashed password back to the user
-  delete user.password;
   res.status(201).json({ status: "success", data: { user } });
 });
 
@@ -69,7 +51,6 @@ export const patchUser = catchAsync(async (req, res, next) => {
   // solve this later after searching for a solution
   const user = await Users.updateOne({ username: req.params.username }, req.body);
   if (!user) return next(new OperationalErrors("No user found", 404));
-  //TODO: use the token id here and use findByIdAndUpdate
   res.json({ status: "success", data: { user } });
 });
 

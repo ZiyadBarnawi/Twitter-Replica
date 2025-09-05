@@ -39,7 +39,7 @@ const usersSchema = mongoose.Schema({
     required: [true, "password can't be null"],
     trim: true,
     select: false,
-    minLength: [8, "password max length exceeded"],
+    minLength: [8, "password min length not meet"],
     validate: {
       validator: function () {
         let password = this.get("password") || this.password;
