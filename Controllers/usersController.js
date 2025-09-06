@@ -47,10 +47,12 @@ export const addUser = catchAsync(async (req, res, next) => {
 });
 
 export const patchUser = catchAsync(async (req, res, next) => {
-  //TODO: currently this doesn't validate against the old document to see if either email or phoneNumber are not nulls.
-  // solve this later after searching for a solution
-  const user = await Users.updateOne({ username: req.params.username }, req.body);
-  if (!user) return next(new OperationalErrors("No user found", 404));
+  //TODO: make this just a pure query middleware so you can have access to what fields are being updated. ofc course, I must query
+  //  for the user in the middleware.
+  // if the email or phoneNUmber are being updated, then check that at least one is not null.
+  let user = await Users.findOne({ username: req.params.username, _id: req.token.id });
+  if (!user) return next(new OperationalErrors("No user was found"), 404);
+  user = await user.updateOne(req.body);
   res.json({ status: "success", data: { user } });
 });
 

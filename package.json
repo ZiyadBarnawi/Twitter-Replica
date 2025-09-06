@@ -15,7 +15,8 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon run server.js"
+    "start": "set NODE_ENV=development&& nodemon run server.js",
+    "start:prod": "set NODE_ENV=production&& nodemon server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

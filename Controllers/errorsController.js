@@ -35,7 +35,7 @@ export const globalErrorHandler = (err, req, res, next) => {
       }
       // JWT error
       else if (err?.name === "JsonWebTokenError") {
-        return res.status(400).json({ status: "error", message: "Invalid web token" });
+        return res.status(400).json({ status: "fail", message: "Invalid web token" });
       }
       res.status(500).json({
         status: "error",

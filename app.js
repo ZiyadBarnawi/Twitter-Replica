@@ -5,7 +5,7 @@ import { router as usersRouter } from "./Routers/usersRouter.js";
 import { router as tweetsRouter } from "./Routers/tweetsRouter.js";
 import { OperationalErrors } from "./Utils/operationalErrors.js";
 import { globalErrorHandler } from "./Controllers/errorsController.js";
-dotenv.config({ path: "./config.env" });
+dotenv.config({ path: "./config.env", quiet: true });
 
 const app = express();
 

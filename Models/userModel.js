@@ -34,6 +34,7 @@ const usersSchema = mongoose.Schema({
     minLength: [10, "min length not meet"],
     validate: { validator: validator.isNumeric, message: "The phone number can't contain letters" },
   },
+  role: { type: String, enum: ["admin", "user"], default: "user" },
   password: {
     type: String,
     required: [true, "password can't be null"],
@@ -93,6 +94,10 @@ const usersSchema = mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  passwordUpdatedAt: {
+    type: Date,
+    select: false,
+  },
   lastUpdatedAt: Date,
 });
 usersSchema.pre("save", async function (next) {
@@ -100,17 +105,29 @@ usersSchema.pre("save", async function (next) {
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
-usersSchema.pre("updateOne", function (next) {
-  if (this.isModified("email") || this.isModified("phoneNumber")) {
-    if (!(this.email && this.phoneNumber))
-      return next(new OperationalErrors("phone number and email can't together be nulls"));
-  }
+usersSchema.pre("updateOne", { document: true, query: false }, function (next) {
+  //FIX: this doesn't work if "this" is a query object. because  of the "isModified" function
+  console.log(this.email, this.phoneNumber);
+  console.log({ ...this });
+  // if (this.isModified("email") || this.isModified("phoneNumber")) {
+  //   if (!(this.email && this.phoneNumber))
+  //     return next(new OperationalErrors("phone number and email can't together be nulls"));
+  // }
 
   next();
 });
+
 usersSchema.method("validatePassword", async function (sentPassword, actualPassword) {
   return await bcrypt.compare(sentPassword, actualPassword);
 });
+usersSchema.method("hasUpdatedPassword", function (JWTTimestamp) {
+  if (this.passwordUpdatedAt) {
+    const passwordUpdateTime = parseInt(this.passwordUpdatedAt.getTime() / 1000, 10);
+    return passwordUpdateTime > JWTTimestamp;
+  }
+  return false;
+});
+
 const Users = mongoose.model("Users", usersSchema);
 
 export { Users };

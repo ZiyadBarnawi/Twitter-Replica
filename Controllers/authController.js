@@ -56,9 +56,10 @@ export const login = catchAsync(async (req, res, next) => {
   else if (email) user = await Users.findOne({ email }).select("+password username");
   else if (phoneNumber) user = await Users.findOne({ phoneNumber }).select("+password username");
 
-  if (!user) next(new OperationalErrors("Invalid user credentials", 401));
+  if (!user) return next(new OperationalErrors("Invalid user credentials", 401));
+
   const valid = await user.validatePassword(password, user.password);
-  if (!valid) next(new OperationalErrors("Invalid user credentials", 401));
+  if (!valid) return next(new OperationalErrors("Invalid user credentials", 401));
 
   const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, {
     expiresIn: "60Days",
@@ -66,14 +67,27 @@ export const login = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", token });
 });
 
-export const protect = catchAsync(async (req, res, next) => {
+export const authenticate = catchAsync(async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   }
-  if (!token) next(new OperationalErrors("You are not logged in!", 401));
+  if (!token) return next(new OperationalErrors("You are not logged in!", 401));
 
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
+  const user = await Users.findOne({ _id: decodedToken.id }).select("passwordUpdatedAt");
+
+  if (!user) return next(new OperationalErrors("The user account is no longer available.", 400));
+
+  const hasUpdatedPassword = user.hasUpdatedPassword(decodedToken.iat);
+  if (hasUpdatedPassword)
+    return next(
+      new OperationalErrors("The user has recently updated his password. Login again!", 401)
+    );
+  //TODO: might also add the "verified" or some other field here to reuse it later.
+  req.token = decodedToken;
   next();
 });
+
+export const authorize = catchAsync((req, res, next) => {});
