@@ -3,7 +3,6 @@ import { Tweets } from "../Models/tweetModel.js";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
-
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
   const excludedParams = ["page", "sort", "limit", "fields"];
@@ -47,13 +46,10 @@ export const addUser = catchAsync(async (req, res, next) => {
 });
 
 export const patchUser = catchAsync(async (req, res, next) => {
-  //TODO: make this just a pure query middleware so you can have access to what fields are being updated. ofc course, I must query
-  //  for the user in the middleware.
-  // if the email or phoneNUmber are being updated, then check that at least one is not null.
-  let user = await Users.findOne({ username: req.params.username, _id: req.token.id });
-  if (!user) return next(new OperationalErrors("No user was found"), 404);
-  user = await user.updateOne(req.body);
-  res.json({ status: "success", data: { user } });
+  if (!req.user) return next(new OperationalErrors("No user was found"), 404);
+
+  const updatedUser = await Users.findOneAndUpdate({ _id: req.user.id }, req.body);
+  res.json({ status: "success", data: { updatedUser } });
 });
 
 export const deleteUser = catchAsync(async (req, res, next) => {
@@ -84,6 +80,7 @@ export const getTweets = catchAsync(async (req, res, next) => {
   } else {
     query = query.sort("createdAt");
   }
+
   //TODO: only show the likes count in the request is not from the account owner
   const excludedFields = ["__v"];
   query = ApiFeatures.fields(query, req.query, excludedFields);

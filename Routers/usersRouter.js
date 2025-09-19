@@ -6,16 +6,21 @@ const router = express.Router();
 
 router.route("/signup").post(authController.signup);
 router.route("/login").post(authController.login);
+router.route("/resetPassword").post(authController.resetPassword);
 router
   .route(`/`)
-  .get(userController.getUsers)
+  .get(authController.authenticate, userController.getUsers)
   .post(authController.authenticate, userController.addUser);
 
 router
   .route(`/:username`)
   .get(userController.getUser)
   .patch(authController.authenticate, userController.patchUser)
-  .delete(authController.authenticate, userController.deleteUser);
+  .delete(
+    authController.authenticate,
+    authController.authorize("admin"),
+    userController.deleteUser
+  );
 
 router.route("/:username/:id").get(userController.getTweet);
 
