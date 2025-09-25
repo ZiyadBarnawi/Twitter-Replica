@@ -1,6 +1,6 @@
 import { mongoose } from "mongoose";
 import validator from "validator";
-
+import crypto from "crypto";
 import * as bcrypt from "bcryptjs";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
 
@@ -105,7 +105,10 @@ const usersSchema = mongoose.Schema({
 });
 usersSchema.pre("save", async function (next) {
   //FIX: this hook is being accessed twice. Not a big issue but needs to be checked.
-  if (this.isModified("password")) this.password = await bcrypt.hash(this.password, 12);
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 12);
+    this.passwordUpdatedAt = Date.now() - 2000;
+  }
 
   if (this.isModified("email") || this.isModified("phoneNumber"))
     if (!this.email && !this.phoneNumber) {
@@ -143,7 +146,7 @@ usersSchema.method("hasUpdatedPassword", function (JWTTimestamp) {
 
 usersSchema.method("createPasswordResetToken", async function () {
   const resetToken = crypto.randomUUID();
-  this.passwordResetToken = await bcrypt.hash(resetToken, 6);
+  this.passwordResetToken = await crypto.createHash("sha256").update(resetToken).digest("hex");
   this.passwordResetTokenExpiresAt = Date.now() + 10 * 60 * 1000;
 
   return resetToken;

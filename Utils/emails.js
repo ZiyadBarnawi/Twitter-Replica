@@ -17,5 +17,5 @@ export const sendEmail = async (options) => {
     text: options.message,
   };
 
-  await transport.sendMail(mailOptions); //TODO: test this mailing service.
+  await transport.sendMail(mailOptions);
 };

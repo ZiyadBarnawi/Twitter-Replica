@@ -1,5 +1,6 @@
 import { mongoose } from "mongoose";
 import { app } from "./app.js";
+
 process.on("unhandledRejection", (err) => {
   console.log(err.name, err.message);
   console.log("unhandled Rejection💥 shitting down");
