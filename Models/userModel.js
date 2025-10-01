@@ -102,7 +102,14 @@ const usersSchema = mongoose.Schema({
   passwordResetToken: { type: String, select: false },
   passwordResetTokenExpiresAt: { type: Date, select: false },
   lastUpdatedAt: Date,
+  active: { type: Boolean, select: false, default: true },
 });
+
+usersSchema.pre(/^find/, function (next) {
+  this.find({ active: { $ne: false } });
+  next();
+});
+
 usersSchema.pre("save", async function (next) {
   //FIX: this hook is being accessed twice. Not a big issue but needs to be checked.
   if (this.isModified("password")) {

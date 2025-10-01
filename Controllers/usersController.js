@@ -3,6 +3,8 @@ import { Tweets } from "../Models/tweetModel.js";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
+import { filterObj } from "../Utils/filterObj.js";
+
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
   const excludedParams = ["page", "sort", "limit", "fields"];
@@ -48,7 +50,7 @@ export const addUser = catchAsync(async (req, res, next) => {
 export const patchUser = catchAsync(async (req, res, next) => {
   if (!req.user) return next(new OperationalErrors("No user was found"), 404);
 
-  const updatedUser = await Users.findOneAndUpdate({ _id: req.user.id }, req.body);
+  const updatedUser = await Users.findOneAndUpdate({ _id: req.token.id }, req.body);
   res.json({ status: "success", data: { updatedUser } });
 });
 
@@ -61,8 +63,36 @@ export const deleteUser = catchAsync(async (req, res, next) => {
   res.status(204).json({ status: "success" });
 });
 
-//* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
+export const updateCurrentUser = catchAsync(async (req, res, next) => {
+  if (req.body.password)
+    return next(
+      new OperationalErrors(
+        "You can't update your password in this endpoint. Please, use: users/updatePassword"
+      )
+    );
+  //This filters out the object to only include certain fields
+  let updateFields = filterObj(req.body, "username", "accountName", "externalLinks", "private");
 
+  const user = await Users.findOneAndUpdate({ _id: req.token.id }, updateFields, {
+    runValidators: true,
+    lean: true,
+    returnDocument: "after",
+  });
+
+  res.status(200).json({ status: "success", data: { user } });
+});
+
+export const deleteCurrentUser = catchAsync(async (req, res, next) => {
+  if (!req?.user) {
+    return next(new OperationalErrors(" it is not there", 404));
+  }
+  const user = await Users.findOneAndUpdate({ _id: req.token.id }, { active: false });
+
+  res.status(200).json({ status: "success", data: null });
+});
+
+//* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
+//FIX: the tweets sections needs to adjusted according to the new tools and techniques in the user section
 export const getTweets = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
   const excludedParams = ["page", "sort", "limit", "fields"];

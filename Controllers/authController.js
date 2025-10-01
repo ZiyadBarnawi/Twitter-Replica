@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
 import { sendEmail } from "./../Utils/emails.js";
+import { generateJwt } from "../Utils/generateJwt.js";
 export const signup = catchAsync(async (req, res, next) => {
   let {
     username,
@@ -39,13 +40,7 @@ export const signup = catchAsync(async (req, res, next) => {
     headerPic,
   });
   user.save();
-  const token = jwt.sign(
-    { id: user._id, username: user.username, role: user.role },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "60Days",
-    }
-  );
+  const token = generateJwt(user);
   res.status(201).json({ status: "success", token, data: { user } });
 });
 
@@ -69,13 +64,8 @@ export const login = catchAsync(async (req, res, next) => {
   const valid = await user.validatePassword(password, user.password);
   if (!valid) return next(new OperationalErrors("Invalid user credentials", 401));
 
-  const token = jwt.sign(
-    { id: user._id, username: user.username, role: user.role },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "90DAYS",
-    }
-  );
+  const token = generateJwt(user);
+
   res.status(200).json({ status: "success", token });
 });
 
@@ -134,13 +124,28 @@ export const resetPassword = catchAsync(async (req, res, next) => {
   user.passwordResetTokenExpiresAt = undefined;
   await user.save();
 
-  const token = jwt.sign(
-    { id: user._id, username: user.username, role: user.role },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "90DAYS",
-    }
-  );
+  const token = generateJwt(user);
+
+  res.status(200).json({ status: "success", token });
+});
+
+export const updatePassword = catchAsync(async (req, res, next) => {
+  let user;
+  if (req.token.username)
+    user = await Users.findOne({ username: req.token.username }).select(
+      "+password username role email phoneNumber"
+    );
+
+  if (!user) return next(new OperationalErrors("No user was found with these credentials", 404));
+
+  const oldPassword = req.body.oldPassword;
+  const valid = await user.validatePassword(oldPassword, user.password);
+  if (!valid) return next(new OperationalErrors("The password is not correct", 401));
+
+  user.password = req.body.newPassword;
+  user.save();
+  const token = generateJwt(user);
+
   res.status(200).json({ status: "success", token });
 });
 export const authenticate = catchAsync(async (req, res, next) => {
@@ -153,7 +158,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
   const user = await Users.findOne({ _id: decodedToken.id }).select(
-    "+passwordUpdatedAt email role verified private"
+    "+passwordUpdatedAt email verified private"
   );
 
   if (!user) return next(new OperationalErrors("The user account is no longer available.", 400));
