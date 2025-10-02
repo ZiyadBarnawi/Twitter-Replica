@@ -41,6 +41,7 @@ export const signup = catchAsync(async (req, res, next) => {
   });
   user.save();
   const token = generateJwt(user);
+  user.password = undefined;
   res.status(201).json({ status: "success", token, data: { user } });
 });
 
@@ -65,6 +66,13 @@ export const login = catchAsync(async (req, res, next) => {
   if (!valid) return next(new OperationalErrors("Invalid user credentials", 401));
 
   const token = generateJwt(user);
+  let cookieOptions = {
+    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
+    httpOnly: true,
+  };
+
+  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+  res.cookie("jwt", token, cookieOptions);
 
   res.status(200).json({ status: "success", token });
 });
@@ -125,6 +133,12 @@ export const resetPassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   const token = generateJwt(user);
+  let cookieOptions = {
+    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
+    httpOnly: true,
+  };
+  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+  res.cookie("jwt", token, cookieOptions);
 
   res.status(200).json({ status: "success", token });
 });
@@ -145,6 +159,12 @@ export const updatePassword = catchAsync(async (req, res, next) => {
   user.password = req.body.newPassword;
   user.save();
   const token = generateJwt(user);
+  let cookieOptions = {
+    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
+    httpOnly: true,
+  };
+  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+  res.cookie("jwt", token, cookieOptions);
 
   res.status(200).json({ status: "success", token });
 });
@@ -158,7 +178,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
   const user = await Users.findOne({ _id: decodedToken.id }).select(
-    "+passwordUpdatedAt email verified private"
+    "+passwordUpdatedAt role   email verified private"
   );
 
   if (!user) return next(new OperationalErrors("The user account is no longer available.", 400));
@@ -175,7 +195,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
 });
 
 export const authorize = (...roles) => {
-  return catchAsync((req, res, next) => {
+  return catchAsync(async (req, res, next) => {
     if (!roles.includes(req.user?.role)) {
       return next(new OperationalErrors("You're not authorized to perform this action", 403));
     }

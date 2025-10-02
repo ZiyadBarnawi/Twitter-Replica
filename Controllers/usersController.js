@@ -48,18 +48,17 @@ export const addUser = catchAsync(async (req, res, next) => {
 });
 
 export const patchUser = catchAsync(async (req, res, next) => {
-  if (!req.user) return next(new OperationalErrors("No user was found"), 404);
+  if (!req.user) return next(new OperationalErrors("No user was found", 404));
 
   const updatedUser = await Users.findOneAndUpdate({ _id: req.token.id }, req.body);
   res.json({ status: "success", data: { updatedUser } });
 });
 
 export const deleteUser = catchAsync(async (req, res, next) => {
-  const user = await Users.findOneAndDelete(
-    { username: req.params.username },
-    { includeResultMetadata: true }
-  );
-  if (!user.value) return next(new OperationalErrors("No user found", 404));
+  const user = await Users.findOneAndDelete({ username: req.params.username.toLowerCase() });
+  console.log(req.params.username);
+
+  if (!user) return next(new OperationalErrors("No user found", 404));
   res.status(204).json({ status: "success" });
 });
 

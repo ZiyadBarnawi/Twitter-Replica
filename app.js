@@ -22,5 +22,4 @@ app.all("{*splat}", (req, res, next) => {
 });
 
 app.use(globalErrorHandler);
-
 export { app };
