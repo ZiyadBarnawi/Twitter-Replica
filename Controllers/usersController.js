@@ -87,7 +87,7 @@ export const deleteCurrentUser = catchAsync(async (req, res, next) => {
   }
   const user = await Users.findOneAndUpdate({ _id: req.token.id }, { active: false });
 
-  res.status(200).json({ status: "success", data: null });
+  res.status(204).json({ status: "success", data: null });
 });
 
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
