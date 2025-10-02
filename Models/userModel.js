@@ -1,7 +1,8 @@
 import { mongoose } from "mongoose";
 import validator from "validator";
-
+import crypto from "crypto";
 import * as bcrypt from "bcryptjs";
+import { OperationalErrors } from "../Utils/operationalErrors.js";
 
 const usersSchema = mongoose.Schema({
   username: {
@@ -98,21 +99,43 @@ const usersSchema = mongoose.Schema({
     type: Date,
     select: false,
   },
+  passwordResetToken: { type: String, select: false },
+  passwordResetTokenExpiresAt: { type: Date, select: false },
   lastUpdatedAt: Date,
+  active: { type: Boolean, select: false, default: true },
 });
-usersSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+
+usersSchema.pre(/^find/, function (next) {
+  this.find({ active: { $ne: false } });
   next();
 });
-usersSchema.pre("updateOne", { document: true, query: false }, function (next) {
-  //FIX: this doesn't work if "this" is a query object. because  of the "isModified" function
-  console.log(this.email, this.phoneNumber);
-  console.log({ ...this });
-  // if (this.isModified("email") || this.isModified("phoneNumber")) {
-  //   if (!(this.email && this.phoneNumber))
-  //     return next(new OperationalErrors("phone number and email can't together be nulls"));
-  // }
+
+usersSchema.pre("save", async function (next) {
+  //FIX: this hook is being accessed twice. Not a big issue but needs to be checked.
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 12);
+    this.passwordUpdatedAt = Date.now() - 2000;
+  }
+
+  if (this.isModified("email") || this.isModified("phoneNumber"))
+    if (!this.email && !this.phoneNumber) {
+      next(new OperationalErrors("Email and phone number can't both be null", 400));
+    }
+  next();
+});
+
+usersSchema.pre("findOneAndUpdate", async function (next, doc) {
+  const update = this.getUpdate() || {};
+  const set = update.$set ?? update;
+
+  const docBefore = await this.model.findOne(this.getQuery()).lean();
+
+  const email = set.email !== undefined ? set.email : docBefore.email;
+  const phone = set.phoneNumber !== undefined ? set.phoneNumber : docBefore.phoneNumber;
+
+  if (!email && !phone) {
+    return next(new OperationalErrors("a user must have either an email or a phoneNumber.", 400));
+  }
 
   next();
 });
@@ -126,6 +149,14 @@ usersSchema.method("hasUpdatedPassword", function (JWTTimestamp) {
     return passwordUpdateTime > JWTTimestamp;
   }
   return false;
+});
+
+usersSchema.method("createPasswordResetToken", async function () {
+  const resetToken = crypto.randomUUID();
+  this.passwordResetToken = await crypto.createHash("sha256").update(resetToken).digest("hex");
+  this.passwordResetTokenExpiresAt = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 });
 
 const Users = mongoose.model("Users", usersSchema);

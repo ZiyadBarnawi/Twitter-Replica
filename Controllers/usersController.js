@@ -3,6 +3,7 @@ import { Tweets } from "../Models/tweetModel.js";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
+import { filterObj } from "../Utils/filterObj.js";
 
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
@@ -47,26 +48,50 @@ export const addUser = catchAsync(async (req, res, next) => {
 });
 
 export const patchUser = catchAsync(async (req, res, next) => {
-  //TODO: make this just a pure query middleware so you can have access to what fields are being updated. ofc course, I must query
-  //  for the user in the middleware.
-  // if the email or phoneNUmber are being updated, then check that at least one is not null.
-  let user = await Users.findOne({ username: req.params.username, _id: req.token.id });
-  if (!user) return next(new OperationalErrors("No user was found"), 404);
-  user = await user.updateOne(req.body);
-  res.json({ status: "success", data: { user } });
+  if (!req.user) return next(new OperationalErrors("No user was found", 404));
+
+  const updatedUser = await Users.findOneAndUpdate({ _id: req.token.id }, req.body);
+  res.json({ status: "success", data: { updatedUser } });
 });
 
 export const deleteUser = catchAsync(async (req, res, next) => {
-  const user = await Users.findOneAndDelete(
-    { username: req.params.username },
-    { includeResultMetadata: true }
-  );
-  if (!user.value) return next(new OperationalErrors("No user found", 404));
+  const user = await Users.findOneAndDelete({ username: req.params.username.toLowerCase() });
+  console.log(req.params.username);
+
+  if (!user) return next(new OperationalErrors("No user found", 404));
   res.status(204).json({ status: "success" });
 });
 
-//* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
+export const updateCurrentUser = catchAsync(async (req, res, next) => {
+  if (req.body.password)
+    return next(
+      new OperationalErrors(
+        "You can't update your password in this endpoint. Please, use: users/updatePassword"
+      )
+    );
+  //This filters out the object to only include certain fields
+  let updateFields = filterObj(req.body, "username", "accountName", "externalLinks", "private");
 
+  const user = await Users.findOneAndUpdate({ _id: req.token.id }, updateFields, {
+    runValidators: true,
+    lean: true,
+    returnDocument: "after",
+  });
+
+  res.status(200).json({ status: "success", data: { user } });
+});
+
+export const deleteCurrentUser = catchAsync(async (req, res, next) => {
+  if (!req?.user) {
+    return next(new OperationalErrors(" it is not there", 404));
+  }
+  const user = await Users.findOneAndUpdate({ _id: req.token.id }, { active: false });
+
+  res.status(200).json({ status: "success", data: null });
+});
+
+//* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
+//FIX: the tweets sections needs to adjusted according to the new tools and techniques in the user section
 export const getTweets = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
   const excludedParams = ["page", "sort", "limit", "fields"];
@@ -84,6 +109,7 @@ export const getTweets = catchAsync(async (req, res, next) => {
   } else {
     query = query.sort("createdAt");
   }
+
   //TODO: only show the likes count in the request is not from the account owner
   const excludedFields = ["__v"];
   query = ApiFeatures.fields(query, req.query, excludedFields);
