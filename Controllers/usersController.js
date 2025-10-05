@@ -7,6 +7,7 @@ import { filterObj } from "../Utils/filterObj.js";
 
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
+
   const excludedParams = ["page", "sort", "limit", "fields"];
   excludedParams.forEach((el) => {
     delete queryCopy[el];
@@ -92,6 +93,8 @@ export const deleteCurrentUser = catchAsync(async (req, res, next) => {
 
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
 //FIX: the tweets sections needs to adjusted according to the new tools and techniques in the user section
+
+// TODO: use an xss protection package like DOMPurify or xss for user inputs
 export const getTweets = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
   const excludedParams = ["page", "sort", "limit", "fields"];
