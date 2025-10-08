@@ -39,7 +39,6 @@ export const signup = catchAsync(async (req, res, next) => {
     profilePic,
     headerPic,
   });
-  user.save();
   const token = generateJwt(user);
   user.password = undefined;
   res.status(201).json({ status: "success", token, data: { user } });
@@ -178,7 +177,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
   const user = await Users.findOne({ _id: decodedToken.id }).select(
-    "+passwordUpdatedAt role   email verified private"
+    "+passwordUpdatedAt role  email verified private"
   );
 
   if (!user) return next(new OperationalErrors("The user account is no longer available.", 400));

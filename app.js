@@ -35,11 +35,16 @@ if (process.env.NODE_ENV === "development") {
 app.use(express.json({ limit: "50kb" })); // to get req.body
 
 // Sanitize user input from NoSQL Injection
-app.use(expressMongoSanitize());
-// TODO: the validation package does offer xss protection. check it out later
+app.use(expressMongoSanitize({ replaceWith: "**dot**" }));
 
-//TODO: try the HPP package for parameter pollution. you can pass {whitelist:["allowed prop1","allowed prop2"]}
-app.use(hpp({ whitelist: ["username", "accountName", "email"] }));
+app.use((req, res, next) => {
+  if (!req?.body?.assets) return next();
+
+  req.body.assets = req.body.assets.map((asset) => asset.replaceAll("**dot**", "."));
+  next();
+});
+
+app.use(hpp({ whitelist: ["username", "accountName", "email", "tags", "assets"] }));
 
 //Serves static files TODO: look for it in details later when uploading images
 // app.use(express.static("./Static"));

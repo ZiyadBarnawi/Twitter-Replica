@@ -9,13 +9,9 @@ router.route("/login").post(authController.login);
 router.route("/forgotPassword").post(authController.forgotPassword);
 router.route("/resetPassword/:resetToken").patch(authController.resetPassword);
 router.route("/updatePassword").patch(authController.authenticate, authController.updatePassword);
-router
-  .route("/deleteCurrentUser")
-  .delete(authController.authenticate, userController.deleteCurrentUser);
+router.route("/deleteMyUser").delete(authController.authenticate, userController.deleteMyUser);
 
-router
-  .route("/updateCurrentUser")
-  .patch(authController.authenticate, userController.updateCurrentUser);
+router.route("/updateMyUser").patch(authController.authenticate, userController.updateMyUser);
 router
   .route(`/`)
   .get(authController.authenticate, userController.getUsers)
@@ -31,6 +27,9 @@ router
     userController.deleteUser
   );
 
-router.route("/:username/:id").get(userController.getTweet);
+router
+  .route("/:username/tweets/:id")
+  .get(userController.getTweet)
+  .patch(authController.authorize("blueUser"), userController.patchMyTweets);
 
 export { router };

@@ -1,8 +1,9 @@
 import { mongoose } from "mongoose";
 const tweetSchema = mongoose.Schema(
   {
-    user: { userId: String, username: String },
+    user: { userId: { type: String, required: true }, username: { type: String, required: true } },
     referencedTweetId: String,
+    repliesIds: [String],
     communityId: String,
     content: {
       type: String,
@@ -12,15 +13,9 @@ const tweetSchema = mongoose.Schema(
       minLength: [1, "min length not meet"],
     },
     tags: [String],
-    retweets: {
-      userId: [String],
-    },
-    likes: {
-      userId: [String],
-    },
-    bookmarks: {
-      userId: [String],
-    },
+    retweets: [String],
+    likes: [String],
+    bookmarks: [String],
     assets: [String],
     createdAt: { type: Date, default: Date.now() },
     lastUpdatedAt: Date,
@@ -28,22 +23,14 @@ const tweetSchema = mongoose.Schema(
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 tweetSchema.virtual("retweetsCount").get(function () {
-  return this?.retweets?.userId?.length || 0;
+  return this?.retweets?.length || 0;
 });
 tweetSchema.virtual("likesCount").get(function () {
-  return this?.likes?.userId?.length || 0;
+  return this?.likes?.length || 0;
 });
 tweetSchema.virtual("bookmarksCount").get(function () {
-  return this?.bookmarks?.userId?.length || 0;
+  return this?.bookmarks?.length || 0;
 });
-
-// TODO: currently if you exclude the likes array, the virtual property will always be 0.
-//  find a way after implementing authorization and JWT
-
-// tweetSchema.pre("find", function (next) {
-//   this.find().where("username").equals();
-//   next();
-// });
 
 const Tweets = mongoose.model("Tweets", tweetSchema);
 
