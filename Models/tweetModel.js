@@ -1,10 +1,9 @@
 import { mongoose } from "mongoose";
 const tweetSchema = mongoose.Schema(
   {
-    user: { userId: { type: String, required: true }, username: { type: String, required: true } },
-    referencedTweetId: String,
-    repliesIds: [String],
-    communityId: String,
+    user: { username: { type: String }, user: { type: mongoose.Schema.ObjectId, ref: "Users" } },
+    repliesIds: [{ type: mongoose.Schema.ObjectId, ref: "Tweets" }],
+    communityId: { type: mongoose.Schema.ObjectId, ref: "Communities" },
     content: {
       type: String,
       required: [true, "can't post an empty tweet"],
@@ -13,9 +12,9 @@ const tweetSchema = mongoose.Schema(
       minLength: [1, "min length not meet"],
     },
     tags: [String],
-    retweets: [String],
-    likes: [String],
-    bookmarks: [String],
+    retweets: [{ type: mongoose.Schema.ObjectId, ref: "Users" }],
+    likes: [{ type: mongoose.Schema.ObjectId, ref: "Users" }],
+    bookmarks: [{ type: mongoose.Schema.ObjectId, ref: "Users" }],
     assets: [String],
     createdAt: { type: Date, default: Date.now() },
     lastUpdatedAt: Date,

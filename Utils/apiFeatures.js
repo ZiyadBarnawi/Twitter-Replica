@@ -34,4 +34,12 @@ export class ApiFeatures {
     const skip = (page - 1) * limit;
     return query.skip(skip).limit(limit);
   }
+  static populate(query, ...fieldName) {
+    console.log(fieldName[0]);
+
+    if (typeof fieldName === "string") return query.populate(fieldName);
+    else if (typeof fieldName[0] === "string" && typeof fieldName === "object")
+      return query.populate(fieldName.join(" "));
+    else if (typeof fieldName === "object") return query.populate(fieldName);
+  }
 }

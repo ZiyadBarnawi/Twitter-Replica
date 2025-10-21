@@ -53,16 +53,25 @@ export const login = catchAsync(async (req, res, next) => {
 
   let user;
   if (username)
-    user = await Users.findOne({ username }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ username }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
   else if (email)
-    user = await Users.findOne({ email }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ email }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
   else if (phoneNumber)
-    user = await Users.findOne({ phoneNumber }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ phoneNumber }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
 
   if (!user) return next(new OperationalErrors("Invalid user credentials", 401));
 
   const valid = await user.validatePassword(password, user.password);
   if (!valid) return next(new OperationalErrors("Invalid user credentials", 401));
+
+  //TODO: check of the login IP is new. if yes, send a email to the user
+  // console.log(`IP ==> ${req.ip}`);
 
   const token = generateJwt(user);
   let cookieOptions = {

@@ -6,7 +6,7 @@ import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
 import { filterObj } from "../Utils/filterObj.js";
-
+import * as factory from "./../Utils/handlerFactory.js";
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
 
@@ -14,6 +14,7 @@ export const getUsers = catchAsync(async (req, res, next) => {
   excludedParams.forEach((el) => {
     delete queryCopy[el];
   });
+
   let query = Users.find(queryCopy);
   if (req.query.sort) {
     query = ApiFeatures.sort(query, req.query);
@@ -44,21 +45,19 @@ export const getUser = catchAsync(async (req, res, next) => {
   res.json({ status: "success", data: { user: user } });
 });
 
-export const addUser = catchAsync(async (req, res, next) => {
-  let user = await Users.create(req.body);
-  res.status(201).json({ status: "success", data: { user } });
-});
+export const addUser = factory.addOne(Users);
 
 export const patchUser = catchAsync(async (req, res, next) => {
   if (!req.user) return next(new OperationalErrors("No user was found", 404));
 
-  const updatedUser = await Users.findOneAndUpdate({ _id: req.token.id }, req.body);
+  const updatedUser = await Users.findOneAndUpdate({ username: req.params.username }, req.body, {
+    new: true,
+  });
   res.json({ status: "success", data: { updatedUser } });
 });
 
 export const deleteUser = catchAsync(async (req, res, next) => {
-  const user = await Users.findOneAndDelete({ username: req.params.username.toLowerCase() });
-  console.log(req.params.username);
+  const user = await Users.findOneAndDelete({ username: req.params.username });
 
   if (!user) return next(new OperationalErrors("No user found", 404));
   res.status(204).json({ status: "success" });
@@ -92,11 +91,15 @@ export const deleteMyUser = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: null });
 });
 
+export const getMe = (req, res, next) => {
+  req.params.username = req.token.username;
+  next();
+};
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
 
 export const getTweets = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
-  const excludedParams = ["page", "sort", "limit", "fields"];
+  const excludedParams = ["page", "sort", "limit", "fields", "populate"];
   excludedParams.forEach((el) => {
     delete queryCopy[el];
   });
@@ -118,20 +121,30 @@ export const getTweets = catchAsync(async (req, res, next) => {
   if (req.query.page) {
     query = ApiFeatures.skip(query, req.query, { page: req.query.page, limit: req.query.limit });
   }
-  let tweets = await query;
-  let tweetsSnapshot = tweets?.map((tweet) => tweet.toObject({ virtuals: true }));
+  let tweets;
+
+  tweets = await ApiFeatures.populate(query, {
+    path: "user.user",
+    select: "username accountName _id",
+  });
+
+  let tweetsSnapshot = tweets?.map((tweet) => tweet.toObject({ virtuals: true })); // This allows me to change the virtual values without them automatically updating
   if (tweetsSnapshot) {
-    if (tweetsSnapshot[0].user?.userid !== req.token.id) {
+    if (tweetsSnapshot[0]?.user?.userId !== req.token.id) {
       tweetsSnapshot = tweetsSnapshot.map((tweet) => {
-        tweet.likes = [];
-        tweet.bookmarks = [];
+        if (req.token.username !== tweet.user.username) {
+          tweet.likes = [];
+          tweet.bookmarks = [];
+        }
         return tweet;
       });
     }
   }
-  res
-    .status(200)
-    .json({ status: "success", results: tweetsSnapshot.length, data: { tweets: tweetsSnapshot } });
+  res.status(200).json({
+    status: "success",
+    results: tweetsSnapshot.length,
+    data: { tweets: tweetsSnapshot },
+  });
 });
 
 export const getTweet = catchAsync(async (req, res, next) => {
@@ -159,7 +172,7 @@ export const addTweet = catchAsync(async (req, res, next) => {
   content = `@${req.token.username} ${content}`;
 
   let tweet = await Tweets.create({
-    user: { userId: req.token.id, username: req.token.username },
+    user: { username: req.token.username, user: req.token.id },
     content,
     assets,
     referencedTweetId,
@@ -169,16 +182,7 @@ export const addTweet = catchAsync(async (req, res, next) => {
   res.status(201).json({ status: "success", data: { tweet } });
 });
 
-export const patchTweet = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOneAndUpdate({ _id: req.body.id }, req.body, {
-    lean: true,
-    returnDocument: "after",
-    runValidators: true,
-  });
-  if (!tweet) return next(new OperationalErrors("No tweet found", 404));
-
-  res.json({ status: "success", data: { tweet } });
-});
+export const patchTweet = factory.patchOne(Tweets);
 
 export const patchMyTweets = catchAsync(async (req, res, next) => {
   const { content, assets } = req.body;
@@ -197,24 +201,14 @@ export const patchMyTweets = catchAsync(async (req, res, next) => {
   tweet.tags = tags;
   tweet.assets = assets;
 });
-export const deleteTweet = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOneAndDelete(
-    { _id: req.params.id },
-    { includeResultMetadata: true }
-  );
 
-  if (!tweet.value) return next(new OperationalErrors("No Tweet were found", 404));
-
-  res.status(204).json({ status: "success" });
-});
-
+export const deleteTweet = factory.deleteOne(Tweets);
 export const deleteMyTweet = catchAsync(async (req, res, next) => {
   const tweet = await Tweets.findOneAndDelete({ "user.userId": req.token.id, _id: req.params.id });
   if (!tweet)
     return next(new OperationalErrors("No Tweet was found or you don't own this tweets", 404));
   res.status(204).json({ status: "success" });
 });
-
 export const retweet = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
   if (!tweet) return next(new OperationalErrors("No tweet found with this ID", 404));
@@ -225,7 +219,6 @@ export const retweet = catchAsync(async (req, res, next) => {
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
 });
-
 export const like = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
 
@@ -238,7 +231,6 @@ export const like = catchAsync(async (req, res, next) => {
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
 });
-
 export const bookmark = catchAsync(async (req, res, next) => {
   let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
   if (!tweet) return next(new OperationalErrors("No tweet found with this ID", 404));
@@ -249,7 +241,6 @@ export const bookmark = catchAsync(async (req, res, next) => {
   tweet.save();
   res.status(200).json({ status: "success", data: { tweet } });
 });
-
 export const deleteMyRetweet = catchAsync(async (req, res, next) => {
   const tweet = await Tweets.findOne({ _id: req.params.id }, { retweets: req.token.id });
   if (!tweet)

@@ -19,7 +19,7 @@ dotenv.config({ path: "./config.env", quiet: true });
 const app = express();
 // Setting security HtTTP headers
 app.use(helmet());
-
+// app.set("trust proxy", true); // TODO: This wi ll be used once I deploy the app and solve the issue of rate limit bypassing
 //TODO: use this to limit for DM message and fetching tweets once they are completely implemented
 // This is a middleware function to limit the request received from one IP.
 

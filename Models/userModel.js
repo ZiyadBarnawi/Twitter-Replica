@@ -113,7 +113,7 @@ usersSchema.pre("save", async function (next) {
   }
 
   if (this.isModified("email") || this.isModified("phoneNumber"))
-    if (!this.email && !this.phoneNumber) {
+    if (!this?.email && !this?.phoneNumber) {
       next(new OperationalErrors("Email and phone number can't both be null", 400));
     }
   next();
@@ -153,6 +153,8 @@ usersSchema.method("createPasswordResetToken", async function () {
 
   return resetToken;
 });
+
+// usersSchema.index({<prop_name>: 1 for acceding order and -1 for descending order });
 
 const Users = mongoose.model("Users", usersSchema);
 
