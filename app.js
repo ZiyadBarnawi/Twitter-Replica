@@ -14,12 +14,13 @@ import { router as usersRouter } from "./Routers/usersRouter.js";
 import { router as tweetsRouter } from "./Routers/tweetsRouter.js";
 import { OperationalErrors } from "./Utils/operationalErrors.js";
 import { globalErrorHandler } from "./Controllers/errorsController.js";
-dotenv.config({ path: "./config.env", quiet: true });
+import multer from "multer";
+// dotenv.config({ path: "./config.env", quiet: true }); // Now I use node built-in --config-file flag
 
 const app = express();
 // Setting security HtTTP headers
 app.use(helmet());
-
+// app.set("trust proxy", true); // TODO: This wi ll be used once I deploy the app and solve the issue of rate limit bypassing
 //TODO: use this to limit for DM message and fetching tweets once they are completely implemented
 // This is a middleware function to limit the request received from one IP.
 
@@ -36,10 +37,8 @@ app.use(express.json({ limit: "50kb" })); // to get req.body
 
 // Sanitize user input from NoSQL Injection
 app.use(expressMongoSanitize());
-// TODO: the validation package does offer xss protection. check it out later
 
-//TODO: try the HPP package for parameter pollution. you can pass {whitelist:["allowed prop1","allowed prop2"]}
-app.use(hpp({ whitelist: ["username", "accountName", "email"] }));
+app.use(hpp({ whitelist: ["username", "accountName", "email", "tags", "assets"] }));
 
 //Serves static files TODO: look for it in details later when uploading images
 // app.use(express.static("./Static"));

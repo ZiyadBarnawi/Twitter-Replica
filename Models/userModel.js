@@ -35,7 +35,7 @@ const usersSchema = mongoose.Schema({
     minLength: [10, "min length not meet"],
     validate: { validator: validator.isNumeric, message: "The phone number can't contain letters" },
   },
-  role: { type: String, enum: ["admin", "user"], default: "user" },
+  role: { type: String, enum: ["admin", "user", "blueUser"], default: "user" },
   password: {
     type: String,
     required: [true, "password can't be null"],
@@ -69,28 +69,15 @@ const usersSchema = mongoose.Schema({
   headerPic: { type: String, trim: true },
   verified: { type: Boolean, default: false },
   externalLinks: { type: [String], maxLength: 3 },
-
   private: { type: Boolean, default: false },
-
-  retweets: {
-    tweetsIds: [String],
-  },
-  likes: {
-    tweetsIds: [String],
-  },
-  bookmarks: {
-    tweetsIds: [String],
-  },
-
-  followers: {
-    users: [{ userId: String }],
-    count: Number,
-  },
-  following: {
-    users: [{ userId: String }],
-    count: Number,
-  },
-
+  pinnedTweetId: { type: String, trim: true },
+  source: { type: String }, // The device that posted the tweets. Android,IOS, etc. Just for laughs and giggles lol
+  retweets: [String],
+  likes: { type: [String], select: false },
+  bookmarks: { type: [String], select: false },
+  followers: { type: [String], select: false },
+  friends: { type: [String], select: false },
+  canBeDMed: { type: Boolean, default: true },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -102,6 +89,14 @@ const usersSchema = mongoose.Schema({
   passwordResetToken: { type: String, select: false },
   passwordResetTokenExpiresAt: { type: Date, select: false },
   lastUpdatedAt: Date,
+  //TODO: search how get the location of current user IP and send a message if it's a new location
+  // To use GeoJSON you need to have type and coordinate attributes. Here lat is first then long
+  savedLoginLocations: [
+    {
+      type: { type: String, default: "Point", enum: ["Point"] },
+      coordinates: [Number],
+    },
+  ],
   active: { type: Boolean, select: false, default: true },
 });
 
@@ -118,7 +113,7 @@ usersSchema.pre("save", async function (next) {
   }
 
   if (this.isModified("email") || this.isModified("phoneNumber"))
-    if (!this.email && !this.phoneNumber) {
+    if (!this?.email && !this?.phoneNumber) {
       next(new OperationalErrors("Email and phone number can't both be null", 400));
     }
   next();
@@ -158,6 +153,8 @@ usersSchema.method("createPasswordResetToken", async function () {
 
   return resetToken;
 });
+
+// usersSchema.index({<prop_name>: 1 for acceding order and -1 for descending order || '2dsphere' for a point on earth or a 2d fictional map });
 
 const Users = mongoose.model("Users", usersSchema);
 

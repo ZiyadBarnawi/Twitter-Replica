@@ -39,7 +39,6 @@ export const signup = catchAsync(async (req, res, next) => {
     profilePic,
     headerPic,
   });
-  user.save();
   const token = generateJwt(user);
   user.password = undefined;
   res.status(201).json({ status: "success", token, data: { user } });
@@ -54,16 +53,25 @@ export const login = catchAsync(async (req, res, next) => {
 
   let user;
   if (username)
-    user = await Users.findOne({ username }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ username }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
   else if (email)
-    user = await Users.findOne({ email }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ email }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
   else if (phoneNumber)
-    user = await Users.findOne({ phoneNumber }).select("+password username role email phoneNumber");
+    user = await Users.findOne({ phoneNumber }).select(
+      "+password username role email phoneNumber savedLoginLocations"
+    );
 
   if (!user) return next(new OperationalErrors("Invalid user credentials", 401));
 
   const valid = await user.validatePassword(password, user.password);
   if (!valid) return next(new OperationalErrors("Invalid user credentials", 401));
+
+  //TODO: check of the login IP is new. if yes, send a email to the user
+  // console.log(`IP ==> ${req.ip}`);
 
   const token = generateJwt(user);
   let cookieOptions = {
@@ -73,7 +81,6 @@ export const login = catchAsync(async (req, res, next) => {
 
   if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
-
   res.status(200).json({ status: "success", token });
 });
 
@@ -178,7 +185,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
   const user = await Users.findOne({ _id: decodedToken.id }).select(
-    "+passwordUpdatedAt role   email verified private"
+    "+passwordUpdatedAt role  email verified private"
   );
 
   if (!user) return next(new OperationalErrors("The user account is no longer available.", 400));
