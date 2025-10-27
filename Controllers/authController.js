@@ -81,7 +81,6 @@ export const login = catchAsync(async (req, res, next) => {
 
   if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
-
   res.status(200).json({ status: "success", token });
 });
 

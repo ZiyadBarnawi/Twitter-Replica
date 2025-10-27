@@ -6,7 +6,12 @@ const router = express.Router();
 router
   .route(`/`)
   .get(userController.getUsers)
-  .post(authController.authenticate, authController.authorize("admin"), userController.addUser);
+  .post(
+    authController.authenticate,
+    authController.authorize("admin"),
+    userController.uploadUserImg,
+    userController.addUser
+  );
 router.use("/:username/tweets/:id", tweetsRouter); // Here the userRouter will redirect to the tweetsRouter
 
 router.route("/signup").post(authController.signup);
@@ -15,13 +20,20 @@ router.route("/forgotPassword").post(authController.forgotPassword);
 router.route("/resetPassword/:resetToken").patch(authController.resetPassword);
 router.route("/updatePassword").patch(authController.authenticate, authController.updatePassword);
 router.route("/deleteMyUser").delete(authController.authenticate, userController.deleteMyUser);
-router.route("/updateMyUser").patch(authController.authenticate, userController.updateMyUser);
+router
+  .route("/updateMyUser")
+  .patch(authController.authenticate, userController.uploadUserImg, userController.updateMyUser);
 router.route("/me").get(authController.authenticate, userController.getMe, userController.getUser);
 
 router
   .route(`/:username`)
   .get(userController.getUser)
-  .patch(authController.authenticate, authController.authorize("admin"), userController.patchUser)
+  .patch(
+    authController.authenticate,
+    authController.authorize("admin"),
+    userController.uploadUserImg,
+    userController.patchUser
+  )
   .delete(
     authController.authenticate,
     authController.authorize("admin"),

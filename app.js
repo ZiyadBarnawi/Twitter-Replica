@@ -14,7 +14,8 @@ import { router as usersRouter } from "./Routers/usersRouter.js";
 import { router as tweetsRouter } from "./Routers/tweetsRouter.js";
 import { OperationalErrors } from "./Utils/operationalErrors.js";
 import { globalErrorHandler } from "./Controllers/errorsController.js";
-dotenv.config({ path: "./config.env", quiet: true });
+import multer from "multer";
+// dotenv.config({ path: "./config.env", quiet: true }); // Now I use node built-in --config-file flag
 
 const app = express();
 // Setting security HtTTP headers
@@ -35,14 +36,7 @@ if (process.env.NODE_ENV === "development") {
 app.use(express.json({ limit: "50kb" })); // to get req.body
 
 // Sanitize user input from NoSQL Injection
-app.use(expressMongoSanitize({ replaceWith: "**dot**" }));
-
-app.use((req, res, next) => {
-  if (!req?.body?.assets) return next();
-
-  req.body.assets = req.body.assets.map((asset) => asset.replaceAll("**dot**", "."));
-  next();
-});
+app.use(expressMongoSanitize());
 
 app.use(hpp({ whitelist: ["username", "accountName", "email", "tags", "assets"] }));
 

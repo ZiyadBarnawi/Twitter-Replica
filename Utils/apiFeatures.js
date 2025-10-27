@@ -35,8 +35,6 @@ export class ApiFeatures {
     return query.skip(skip).limit(limit);
   }
   static populate(query, ...fieldName) {
-    console.log(fieldName[0]);
-
     if (typeof fieldName === "string") return query.populate(fieldName);
     else if (typeof fieldName[0] === "string" && typeof fieldName === "object")
       return query.populate(fieldName.join(" "));

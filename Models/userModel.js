@@ -154,7 +154,7 @@ usersSchema.method("createPasswordResetToken", async function () {
   return resetToken;
 });
 
-// usersSchema.index({<prop_name>: 1 for acceding order and -1 for descending order });
+// usersSchema.index({<prop_name>: 1 for acceding order and -1 for descending order || '2dsphere' for a point on earth or a 2d fictional map });
 
 const Users = mongoose.model("Users", usersSchema);
 

@@ -9,8 +9,13 @@ export const deleteOne = (Model) =>
     res.status(204).json({ status: "success" });
   });
 
-export const patchOne = (Model) =>
+export const patchOne = (Model, options = null) =>
   catchAsync(async (req, res, next) => {
+    if (options.isTweet) {
+      req.body.assets = req.files.map((file) => {
+        return file.filename;
+      });
+    }
     const doc = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, {
       lean: true,
       returnDocument: "after",
@@ -21,8 +26,13 @@ export const patchOne = (Model) =>
     res.json({ status: "success", data: { data: doc } });
   });
 
-export const addOne = (Model) =>
+export const addOne = (Model, options = null) =>
   catchAsync(async (req, res, next) => {
+    if (options.isTweet) {
+      req.body.assets = req.files.map((file) => {
+        return file.filename;
+      });
+    }
     let doc = await Model.create(req.body);
     res.status(201).json({ status: "success", data: { doc } });
   });

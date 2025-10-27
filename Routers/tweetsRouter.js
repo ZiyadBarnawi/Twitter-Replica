@@ -6,15 +6,22 @@ const router = express.Router({ mergeParams: true });
 router
   .route("/")
   .get(usersController.getTweet)
-  .patch(authenticate, authorize("blueUser"), usersController.patchMyTweets)
-  .post(authenticate, usersController.addTweet);
+  .post(authenticate, usersController.uploadTweets, usersController.addTweet);
 
 router.route("/deleteMyTweet/:id").delete(authenticate, usersController.deleteMyTweet);
+router
+  .route("/patchMyTweet/:id")
+  .patch(
+    authenticate,
+    authorize("blueUser"),
+    usersController.uploadTweets,
+    usersController.patchMyTweets
+  );
 
 router.route("/:username").get(authenticate, usersController.getTweets);
 router
   .route(`/:id`)
-  .patch(authenticate, authorize("admin"), usersController.patchTweet)
+  .patch(authenticate, authorize("admin"), usersController.uploadTweets, usersController.patchTweet)
   .delete(authenticate, authorize("admin"), usersController.deleteTweet);
 router
   .route("/retweets/:id")

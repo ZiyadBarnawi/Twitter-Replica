@@ -15,8 +15,8 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "start": "set NODE_ENV=development&& nodemon run server.js",
-    "start:prod": "set NODE_ENV=production&& nodemon server.js"
+    "start": "node --watch --env-file=.\\config.env server.js",
+    "start:prod": "set NODE_ENV=production && node --watch --env-file=.\\config.env server.js"
   },
   "dependencies": {
     "@exortek/express-mongo-sanitize": "^1.1.0",
@@ -32,6 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
     "morgan": "^1.10.1",
+    "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
     "validator": "^13.15.15",
     "xss": "^1.0.15"

@@ -16,9 +16,9 @@ process.on("uncaughtException", (err) => {
 
 mongoose.connect(process.env.HOSTED_DATABASE).then((con) => {
   if (con.connection.readyState == 1) {
-    console.log("Connected to the database!🔗");
+    console.log("Connected to the database!🔗✅");
   } else {
-    console.log("The database is not Connected!⛓️‍💥");
+    console.log("The database is not Connected!⛓️‍💥❌");
   }
 });
 const server = app.listen(process.env.PORT, "127.0.0.1", () => {

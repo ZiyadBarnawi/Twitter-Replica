@@ -7,6 +7,53 @@ import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
 import { filterObj } from "../Utils/filterObj.js";
 import * as factory from "./../Utils/handlerFactory.js";
+import multer from "multer";
+import { deleteOldFiles } from "../Utils/deleteOldFiles.js";
+
+const tweetsStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, `${process.env.ROOT_PATH}\\Static\\Imgs\\Tweets`);
+  },
+  filename: (req, file, cb) => {
+    const extension = file.mimetype.split("/")[1];
+    cb(null, `tweet-${req.token.id}-${Date.now()}.${extension}`);
+  },
+});
+const userStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, `${process.env.ROOT_PATH}\\Static\\Imgs\\Users`);
+  },
+  filename: (req, file, cb) => {
+    const extension = file.mimetype.split("/")[1];
+    cb(null, `user-${req.token.id}-${Date.now()}.${extension}`);
+  },
+});
+//This test if the uploaded file is an image of video
+const tweetsFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image") || file.mimetype.startsWith("video")) {
+    cb(null, true);
+  } else {
+    cb(new OperationalErrors("The upload file is now accepted.", 400), false);
+  }
+};
+const userFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image")) {
+    cb(null, true);
+  } else {
+    cb(new OperationalErrors("The upload file is now accepted.", 400), false);
+  }
+};
+const tweetsUpload = multer({
+  storage: tweetsStorage,
+  fileFilter: tweetsFilter,
+  limits: { files: 4 },
+});
+const userUpload = multer({
+  storage: userStorage,
+  fileFilter: userFilter,
+  limits: { files: 1, fileSize: 25000000 },
+});
+
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
 
@@ -158,7 +205,7 @@ export const getTweet = catchAsync(async (req, res, next) => {
 
 export const addTweet = catchAsync(async (req, res, next) => {
   //1- purify the body.
-  let { content, assets, referencedTweetId, communityId } = req.body;
+  let { content, referencedTweetId, communityId } = req.body;
 
   const window = new JSDOM("").window;
   const purify = DOMPurify(window);
@@ -171,6 +218,10 @@ export const addTweet = catchAsync(async (req, res, next) => {
   //2- To follow twitter's way of how content is formatted
   content = `@${req.token.username} ${content}`;
 
+  let assets = req.files.map((file) => {
+    return file.filename;
+  });
+
   let tweet = await Tweets.create({
     user: { username: req.token.username, user: req.token.id },
     content,
@@ -181,11 +232,17 @@ export const addTweet = catchAsync(async (req, res, next) => {
   });
   res.status(201).json({ status: "success", data: { tweet } });
 });
+export const uploadTweets = tweetsUpload.array("assets");
+export const uploadUserImg = userUpload.single("assets");
 
-export const patchTweet = factory.patchOne(Tweets);
+export const patchTweet = factory.patchOne(Tweets, { isTweet: true });
 
 export const patchMyTweets = catchAsync(async (req, res, next) => {
-  const { content, assets } = req.body;
+  let { content } = req.body;
+
+  let assets = req.files.map((file) => {
+    return file.filename;
+  });
   let tweet = await Tweets.findById(req.params.id);
   if (!tweet) return next(new OperationalErrors("No tweet was found", 404));
 
@@ -197,9 +254,14 @@ export const patchMyTweets = catchAsync(async (req, res, next) => {
     .filter((word) => word.startsWith("#"))
     .map((tag) => purify.sanitize(tag));
 
+  deleteOldFiles("Static/Imgs/Tweets", ...tweet.assets);
   tweet.content = content;
   tweet.tags = tags;
   tweet.assets = assets;
+  tweet.save();
+  res.tweets = tweet;
+
+  res.status(200).json({ status: "success", data: { tweet } });
 });
 
 export const deleteTweet = factory.deleteOne(Tweets);
