@@ -9,7 +9,7 @@ router
   .post(
     authController.authenticate,
     authController.authorize("admin"),
-    userController.uploadUserImg,
+    userController.uploadUserImages,
     userController.addUser
   );
 router.use("/:username/tweets/:id", tweetsRouter); // Here the userRouter will redirect to the tweetsRouter
@@ -22,7 +22,12 @@ router.route("/updatePassword").patch(authController.authenticate, authControlle
 router.route("/deleteMyUser").delete(authController.authenticate, userController.deleteMyUser);
 router
   .route("/updateMyUser")
-  .patch(authController.authenticate, userController.uploadUserImg, userController.updateMyUser);
+  .patch(
+    authController.authenticate,
+    userController.uploadUserImages,
+    userController.resizeUserImage,
+    userController.updateMyUser
+  );
 router.route("/me").get(authController.authenticate, userController.getMe, userController.getUser);
 
 router
@@ -31,7 +36,7 @@ router
   .patch(
     authController.authenticate,
     authController.authorize("admin"),
-    userController.uploadUserImg,
+    userController.uploadUserImages,
     userController.patchUser
   )
   .delete(

@@ -203,7 +203,7 @@ export const authenticate = catchAsync(async (req, res, next) => {
 
 export const authorize = (...roles) => {
   return catchAsync(async (req, res, next) => {
-    if (!roles.includes(req.user?.role)) {
+    if (!roles.includes(req.token?.role)) {
       return next(new OperationalErrors("You're not authorized to perform this action", 403));
     }
     next();

@@ -1,58 +1,61 @@
-import { JSDOM } from "jsdom";
-import DOMPurify from "dompurify";
+import multer from "multer";
+import sharp from "sharp";
 import { Users } from "./../Models/userModel.js";
-import { Tweets } from "../Models/tweetModel.js";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
 import { OperationalErrors } from "../Utils/operationalErrors.js";
 import { filterObj } from "../Utils/filterObj.js";
 import * as factory from "./../Utils/handlerFactory.js";
-import multer from "multer";
 import { deleteOldFiles } from "../Utils/deleteOldFiles.js";
 
-const tweetsStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, `${process.env.ROOT_PATH}\\Static\\Imgs\\Tweets`);
-  },
-  filename: (req, file, cb) => {
-    const extension = file.mimetype.split("/")[1];
-    cb(null, `tweet-${req.token.id}-${Date.now()}.${extension}`);
-  },
-});
-const userStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, `${process.env.ROOT_PATH}\\Static\\Imgs\\Users`);
-  },
-  filename: (req, file, cb) => {
-    const extension = file.mimetype.split("/")[1];
-    cb(null, `user-${req.token.id}-${Date.now()}.${extension}`);
-  },
-});
+//* Multer config ////////////////////////////////////////////
+
+const userStorage = multer.memoryStorage();
 //This test if the uploaded file is an image of video
-const tweetsFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image") || file.mimetype.startsWith("video")) {
-    cb(null, true);
-  } else {
-    cb(new OperationalErrors("The upload file is now accepted.", 400), false);
-  }
-};
+
 const userFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
     cb(null, true);
   } else {
-    cb(new OperationalErrors("The upload file is now accepted.", 400), false);
+    cb(new OperationalErrors("The upload file is not accepted.", 400), false);
   }
 };
-const tweetsUpload = multer({
-  storage: tweetsStorage,
-  fileFilter: tweetsFilter,
-  limits: { files: 4 },
-});
+
 const userUpload = multer({
   storage: userStorage,
   fileFilter: userFilter,
-  limits: { files: 1, fileSize: 25000000 },
+  limits: { files: 2, fileSize: 25000000 },
 });
+
+export const uploadUserImages = userUpload.fields([
+  { name: "profilePic", maxCount: 1 },
+  { name: "headerPic", maxCount: 1 },
+]);
+
+export const resizeUserImage = (req, res, next) => {
+  if (!req.files) return next();
+  if (req.files.profilePic) {
+    req.files.profilePic[0].filename = `user-${req.token.id}-${Date.now()}.jpeg`;
+    sharp(req.files.profilePic[0].buffer)
+      .resize(500, 500)
+      .toFormat("jpeg")
+      .jpeg({ quality: 90 })
+      .toFile(`${process.env.ROOT_PATH}/Static/Imgs/Users/${req.files.profilePic[0].filename}`);
+  }
+
+  if (req.files.headerPic) {
+    req.files.headerPic[0].filename = `user-${req.token.id}-${Date.now()}.jpeg`;
+    sharp(req.files.headerPic[0].buffer)
+      .resize(1500, 500)
+      .toFormat("jpeg")
+      .jpeg({ quality: 90 })
+      .toFile(`${process.env.ROOT_PATH}/Static/Imgs/Users/${req.files.headerPic[0].filename}`);
+  }
+
+  next();
+};
+
+//* Users endpoints  ////////////////////////////////////////////
 
 export const getUsers = catchAsync(async (req, res, next) => {
   let queryCopy = { ...req.query };
@@ -111,7 +114,7 @@ export const deleteUser = catchAsync(async (req, res, next) => {
 });
 
 export const updateMyUser = catchAsync(async (req, res, next) => {
-  if (req.body.password)
+  if (req.body?.password)
     return next(
       new OperationalErrors(
         "You can't update your password in this endpoint. Please, use: users/updatePassword"
@@ -119,6 +122,9 @@ export const updateMyUser = catchAsync(async (req, res, next) => {
     );
   //This filters out the object to only include certain fields
   let updateFields = filterObj(req.body, "username", "accountName", "externalLinks", "private");
+
+  if (req.files?.profilePic[0]?.buffer) updateFields.profilePic = req.files.profilePic[0].filename;
+  if (req.files?.headerPic[0]?.buffer) updateFields.headerPic = req.files.headerPic[0].filename;
 
   const user = await Users.findOneAndUpdate({ _id: req.token.id }, updateFields, {
     runValidators: true,
@@ -143,194 +149,3 @@ export const getMe = (req, res, next) => {
   next();
 };
 //* Tweets /////////////////////////////////////////////////////////////////////////////////////////////
-
-export const getTweets = catchAsync(async (req, res, next) => {
-  let queryCopy = { ...req.query };
-  const excludedParams = ["page", "sort", "limit", "fields", "populate"];
-  excludedParams.forEach((el) => {
-    delete queryCopy[el];
-  });
-  let query = Tweets.find().where("user.username").equals(req.params.username);
-  if (queryCopy.words) {
-    query = query
-      .where("content")
-      .equals({ $regex: new RegExp(String.raw`${queryCopy.words}`), $options: "i" });
-  }
-  if (req.query.sort) {
-    query = ApiFeatures.sort(query, req.query);
-  } else {
-    query = query.sort("createdAt");
-  }
-
-  const excludedFields = ["__v"];
-  query = ApiFeatures.fields(query, req.query, excludedFields);
-
-  if (req.query.page) {
-    query = ApiFeatures.skip(query, req.query, { page: req.query.page, limit: req.query.limit });
-  }
-  let tweets;
-
-  tweets = await ApiFeatures.populate(query, {
-    path: "user.user",
-    select: "username accountName _id",
-  });
-
-  let tweetsSnapshot = tweets?.map((tweet) => tweet.toObject({ virtuals: true })); // This allows me to change the virtual values without them automatically updating
-  if (tweetsSnapshot) {
-    if (tweetsSnapshot[0]?.user?.userId !== req.token.id) {
-      tweetsSnapshot = tweetsSnapshot.map((tweet) => {
-        if (req.token.username !== tweet.user.username) {
-          tweet.likes = [];
-          tweet.bookmarks = [];
-        }
-        return tweet;
-      });
-    }
-  }
-  res.status(200).json({
-    status: "success",
-    results: tweetsSnapshot.length,
-    data: { tweets: tweetsSnapshot },
-  });
-});
-
-export const getTweet = catchAsync(async (req, res, next) => {
-  let query = Tweets.find().where("_id").equals(req.params.id);
-  const excludedFields = ["__v"];
-  ApiFeatures.fields(query, req.query, excludedFields);
-  const tweet = await query;
-  if (!tweet) return next(new OperationalErrors("No tweet found", 404));
-  res.status(200).json({ status: "success", data: { tweet } });
-});
-
-export const addTweet = catchAsync(async (req, res, next) => {
-  //1- purify the body.
-  let { content, referencedTweetId, communityId } = req.body;
-
-  const window = new JSDOM("").window;
-  const purify = DOMPurify(window);
-  content = purify.sanitize(content);
-  const tags = content
-    .split(" ")
-    .filter((word) => word.startsWith("#"))
-    .map((tag) => purify.sanitize(tag));
-
-  //2- To follow twitter's way of how content is formatted
-  content = `@${req.token.username} ${content}`;
-
-  let assets = req.files.map((file) => {
-    return file.filename;
-  });
-
-  let tweet = await Tweets.create({
-    user: { username: req.token.username, user: req.token.id },
-    content,
-    assets,
-    referencedTweetId,
-    communityId,
-    tags,
-  });
-  res.status(201).json({ status: "success", data: { tweet } });
-});
-export const uploadTweets = tweetsUpload.array("assets");
-export const uploadUserImg = userUpload.single("assets");
-
-export const patchTweet = factory.patchOne(Tweets, { isTweet: true });
-
-export const patchMyTweets = catchAsync(async (req, res, next) => {
-  let { content } = req.body;
-
-  let assets = req.files.map((file) => {
-    return file.filename;
-  });
-  let tweet = await Tweets.findById(req.params.id);
-  if (!tweet) return next(new OperationalErrors("No tweet was found", 404));
-
-  const window = new JSDOM("").window;
-  const purify = DOMPurify(window);
-  content = purify.sanitize(content);
-  const tags = content
-    .split(" ")
-    .filter((word) => word.startsWith("#"))
-    .map((tag) => purify.sanitize(tag));
-
-  deleteOldFiles("Static/Imgs/Tweets", ...tweet.assets);
-  tweet.content = content;
-  tweet.tags = tags;
-  tweet.assets = assets;
-  tweet.save();
-  res.tweets = tweet;
-
-  res.status(200).json({ status: "success", data: { tweet } });
-});
-
-export const deleteTweet = factory.deleteOne(Tweets);
-export const deleteMyTweet = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOneAndDelete({ "user.userId": req.token.id, _id: req.params.id });
-  if (!tweet)
-    return next(new OperationalErrors("No Tweet was found or you don't own this tweets", 404));
-  res.status(204).json({ status: "success" });
-});
-export const retweet = catchAsync(async (req, res, next) => {
-  let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
-  if (!tweet) return next(new OperationalErrors("No tweet found with this ID", 404));
-  if (tweet.retweets.includes(req.token.id))
-    return next(new OperationalErrors("Already retweeted this tweet", 400));
-
-  tweet.retweets.push(req.token.id);
-  tweet.save();
-  res.status(200).json({ status: "success", data: { tweet } });
-});
-export const like = catchAsync(async (req, res, next) => {
-  let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
-
-  if (!tweet) return next(new OperationalErrors("No tweet found with this ID", 404));
-
-  if (tweet.likes?.includes(req.token.id))
-    return next(new OperationalErrors("Already liked this tweets", 400));
-
-  tweet.likes.push(req.token.id);
-  tweet.save();
-  res.status(200).json({ status: "success", data: { tweet } });
-});
-export const bookmark = catchAsync(async (req, res, next) => {
-  let tweet = await Tweets.findOne().where("_id").equals(req.params.id);
-  if (!tweet) return next(new OperationalErrors("No tweet found with this ID", 404));
-  if (tweet.bookmarks.includes(req.token.id))
-    return next(new OperationalErrors("Already bookmarked this tweet", 400));
-
-  tweet.bookmarks.push(req.token.id);
-  tweet.save();
-  res.status(200).json({ status: "success", data: { tweet } });
-});
-export const deleteMyRetweet = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOne({ _id: req.params.id }, { retweets: req.token.id });
-  if (!tweet)
-    return next(new OperationalErrors("no tweet found or you haven't retweeted this tweet", 404));
-  let userIdIndex = tweet.retweets.findIndex((el) => el === req.token.id);
-  if (userIdIndex === -1) return next(new OperationalErrors("The tweet is not retweeted", 400));
-
-  tweet.retweets.splice(userIdIndex, 1);
-  tweet.save();
-  res.status(204).json({ status: "success" });
-});
-export const deleteMyLike = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOne({ _id: req.params.id }, { likes: req.token.id });
-  if (!tweet) return next(new OperationalErrors("no tweet found", 404));
-  let userIdIndex = tweet.likes.findIndex((el) => el === req.token.id);
-  if (userIdIndex === -1) return next(new OperationalErrors("The tweet is not likes", 400));
-
-  tweet.retweets.splice(userIdIndex, 1);
-  tweet.save();
-  res.status(204).json({ status: "success" });
-});
-export const deleteMyBookmark = catchAsync(async (req, res, next) => {
-  const tweet = await Tweets.findOne({ _id: req.params.id }, { bookmarks: req.token.id });
-  if (!tweet) return next(new OperationalErrors("no tweet found", 404));
-  let userIdIndex = tweet.retweets.findIndex((el) => el === req.token.id);
-  if (userIdIndex === -1) return next(new OperationalErrors("The tweet is not bookmarked", 400));
-
-  tweet.retweets.splice(userIdIndex, 1);
-  tweet.save();
-  res.status(204).json({ status: "success" });
-});
