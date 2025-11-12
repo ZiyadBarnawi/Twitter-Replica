@@ -29,7 +29,8 @@ router
     userController.updateMyUser
   );
 router.route("/me").get(authController.authenticate, userController.getMe, userController.getUser);
-
+router.route("/follow/:id").post(authController.authenticate, userController.follow);
+router.route("/unfollow/:id").post(authController.authenticate, userController.unfollow);
 router
   .route(`/:username`)
   .get(userController.getUser)

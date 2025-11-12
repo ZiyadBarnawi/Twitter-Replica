@@ -14,8 +14,8 @@ const usersSchema = mongoose.Schema({
       validator: function () {
         let username = this.get("username") || this.username;
         if (username.length < 3) return false;
-        if (/[^A-Za-z0-9_]/.test(username)) return false;
-        if (!/[A-Za-z]/.test(username)) return false;
+        if (/[^A-Za-z0-9_]/.test(username)) return false; //If the username contains any invalid character, return false.
+        if (!/[A-Za-z]/.test(username)) return false; //If the username does not contain at least one letter, return false.
       },
       message:
         "The username must be longer than 3 characters with an English letters. NOTE: numbers and underscores are optional ",
@@ -70,13 +70,13 @@ const usersSchema = mongoose.Schema({
   verified: { type: Boolean, default: false },
   externalLinks: { type: [String], maxLength: 3 },
   private: { type: Boolean, default: false },
-  pinnedTweetId: { type: String, trim: true },
+  pinnedTweetId: { type: mongoose.Schema.ObjectId, ref: "Tweets", trim: true },
   source: { type: String }, // The device that posted the tweets. Android,IOS, etc. Just for laughs and giggles lol
-  retweets: [String],
-  likes: { type: [String], select: false },
-  bookmarks: { type: [String], select: false },
-  followers: { type: [String], select: false },
-  friends: { type: [String], select: false },
+  retweets: { type: [mongoose.Schema.ObjectId], ref: "Tweets" },
+  likes: { type: [mongoose.Schema.ObjectId], ref: "Tweets", select: false, default: [] },
+  bookmarks: { type: [mongoose.Schema.ObjectId], ref: "Tweets", select: false, default: [] },
+  followers: { type: [mongoose.Schema.ObjectId], ref: "Users", select: false, default: [] },
+  friends: { type: [mongoose.Schema.ObjectId], ref: "Users", select: false, default: [] },
   canBeDMed: { type: Boolean, default: true },
   createdAt: {
     type: Date,
@@ -129,7 +129,7 @@ usersSchema.pre("findOneAndUpdate", async function (next, doc) {
   const phone = set.phoneNumber !== undefined ? set.phoneNumber : docBefore.phoneNumber;
 
   if (!email && !phone) {
-    return next(new OperationalErrors("a user must have either an email or a phoneNumber.", 400));
+    return next(new OperationalErrors("a user must have either an email or a phone number.", 400));
   }
 
   next();

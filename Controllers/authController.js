@@ -77,9 +77,9 @@ export const login = catchAsync(async (req, res, next) => {
   let cookieOptions = {
     expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
     httpOnly: true,
+    secure: process.secure || req.headers["x-forwarded-proto"] === "https",
   };
 
-  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
   res.status(200).json({ status: "success", token });
 });
@@ -143,8 +143,8 @@ export const resetPassword = catchAsync(async (req, res, next) => {
   let cookieOptions = {
     expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
     httpOnly: true,
+    secure: process.secure || req.headers["x-forwarded-proto"] === "https",
   };
-  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
 
   res.status(200).json({ status: "success", token });
@@ -169,18 +169,21 @@ export const updatePassword = catchAsync(async (req, res, next) => {
   let cookieOptions = {
     expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 Days
     httpOnly: true,
+    secure: process.secure || req.headers["x-forwarded-proto"] === "https",
   };
-  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
 
   res.status(200).json({ status: "success", token });
 });
+
 export const authenticate = catchAsync(async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   }
-  if (!token) return next(new OperationalErrors("You are not logged in!", 401));
+  if (!token)
+    if (options?.allowNoToken) return next();
+    else return next(new OperationalErrors("You are not logged in!", 401));
 
   const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 

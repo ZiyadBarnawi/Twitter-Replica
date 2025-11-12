@@ -20,14 +20,14 @@ const tweetsStorage = multer.diskStorage({
     cb(null, `tweet-${req.token.id}-${Date.now()}.${extension}`);
   },
 });
+
 //This checks if the uploaded file is an image of video
 const tweetsFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image") || file.mimetype.startsWith("video")) {
     cb(null, true);
-  } else {
-    cb(new OperationalErrors("The upload file is now accepted.", 400), false);
-  }
+  } else cb(new OperationalErrors("The uploaded file is now accepted.", 400), false);
 };
+
 const tweetsUpload = multer({
   storage: tweetsStorage,
   fileFilter: tweetsFilter,
@@ -67,17 +67,17 @@ export const getTweets = catchAsync(async (req, res, next) => {
   });
 
   let tweetsSnapshot = tweets?.map((tweet) => tweet.toObject({ virtuals: true })); // This allows me to change the virtual values without them automatically updating
-  if (tweetsSnapshot) {
-    if (tweetsSnapshot[0]?.user?.userId !== req.token.id) {
-      tweetsSnapshot = tweetsSnapshot.map((tweet) => {
-        if (req.token.username !== tweet.user.username) {
-          tweet.likes = [];
-          tweet.bookmarks = [];
-        }
-        return tweet;
-      });
-    }
+  if (tweetsSnapshot[0]?.user?.userId !== req.token.id) {
+    const userId = req?.token?.id ? ObjectId.createFromHexString(req.token.id) : null;
+    tweetsSnapshot = tweetsSnapshot.map((tweet) => {
+      if (!tweetsSnapshot?.user?.user.equals(userId)) {
+        tweet.likes = [];
+        tweet.bookmarks = [];
+      }
+      return tweet;
+    });
   }
+
   res.status(200).json({
     status: "success",
     results: tweetsSnapshot.length,
@@ -86,28 +86,27 @@ export const getTweets = catchAsync(async (req, res, next) => {
 });
 
 export const getTweet = catchAsync(async (req, res, next) => {
-  let query = Tweets.find().where("_id").equals(req.params.id);
+  let query = Tweets.findById(req.params.id);
   const excludedFields = ["__v"];
   ApiFeatures.fields(query, req.query, excludedFields);
   const tweet = await query;
   if (!tweet) return next(new OperationalErrors("No tweet found", 404));
-  res.status(200).json({ status: "success", data: { tweet } });
+
+  let tweetSnapshot = tweet.toObject({ virtuals: true });
+  // This allows me to change the virtual values without them automatically updating
+  const userId = req?.token?.id ? ObjectId.createFromHexString(req.token.id) : null;
+  if (!tweetSnapshot?.user?.user.equals(userId)) {
+    tweetSnapshot.likes = [];
+    tweetSnapshot.bookmarks = [];
+  }
+
+  res.status(200).json({ status: "success", data: { tweetSnapshot } });
 });
 
 export const addTweet = catchAsync(async (req, res, next) => {
   //1- purify the body.
+  if (!req.body) next(new OperationalErrors("The request body is empty", 400));
   let { content, referencedTweetId, communityId } = req.body;
-
-  const window = new JSDOM("").window;
-  const purify = DOMPurify(window);
-  content = purify.sanitize(content);
-  const tags = content
-    .split(" ")
-    .filter((word) => word.startsWith("#"))
-    .map((tag) => purify.sanitize(tag));
-
-  //2- To follow twitter's way of how content is formatted
-  content = `@${req.token.username} ${content}`;
 
   let assets = req.files.map((file) => {
     return file.filename;
@@ -119,7 +118,6 @@ export const addTweet = catchAsync(async (req, res, next) => {
     assets,
     referencedTweetId,
     communityId,
-    tags,
   });
   res.status(201).json({ status: "success", data: { tweet } });
 });

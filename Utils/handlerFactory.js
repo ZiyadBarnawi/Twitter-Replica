@@ -11,7 +11,7 @@ export const deleteOne = (Model) =>
 
 export const patchOne = (Model, options = null) =>
   catchAsync(async (req, res, next) => {
-    if (options.isTweet) {
+    if (options?.isTweet) {
       req.body.assets = req.files.map((file) => {
         return file.filename;
       });
@@ -28,7 +28,7 @@ export const patchOne = (Model, options = null) =>
 
 export const addOne = (Model, options = null) =>
   catchAsync(async (req, res, next) => {
-    if (options.isTweet) {
+    if (options?.isTweet) {
       req.body.assets = req.files.map((file) => {
         return file.filename;
       });

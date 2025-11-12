@@ -3,23 +3,26 @@ import express from "express";
 import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
+import cors from "cors";
 import hpp from "hpp-clean";
-
 import { expressMongoSanitize } from "@exortek/express-mongo-sanitize";
 import { JSDOM } from "jsdom";
 import DOMPurify from "dompurify";
-
 // import * as XssClean from "xss-clean";
+
 import { router as usersRouter } from "./Routers/usersRouter.js";
 import { router as tweetsRouter } from "./Routers/tweetsRouter.js";
 import { OperationalErrors } from "./Utils/operationalErrors.js";
 import { globalErrorHandler } from "./Controllers/errorsController.js";
+import { chatsRouter } from "./Routers/chatRouter.js";
 import multer from "multer";
 // dotenv.config({ path: "./config.env", quiet: true }); // Now I use node built-in --config-file flag
 
 const app = express();
 // Setting security HtTTP headers
 app.use(helmet());
+app.use(cors());
+app.options("{*splat}", cors());
 // app.set("trust proxy", true); // TODO: This wi ll be used once I deploy the app and solve the issue of rate limit bypassing
 //TODO: use this to limit for DM message and fetching tweets once they are completely implemented
 // This is a middleware function to limit the request received from one IP.
@@ -38,14 +41,14 @@ app.use(express.json({ limit: "50kb" })); // to get req.body
 // Sanitize user input from NoSQL Injection
 app.use(expressMongoSanitize());
 
-app.use(hpp({ whitelist: ["username", "accountName", "email", "tags", "assets"] }));
+app.use(hpp({ whitelist: ["username", "accountName", "email", "tags", "assets", "members"] }));
 
 //Serves static files TODO: look for it in details later when uploading images
 // app.use(express.static("./Static"));
 app.use("/api", limiter); //to limit requests number
 app.use(`/api/v1/users`, usersRouter);
 app.use(`/api/v1/tweets`, tweetsRouter);
-
+app.use(`/api/v1/chats`, chatsRouter);
 app.all("{*splat}", (req, res, next) => {
   next(new OperationalErrors(`The route ${req.originalUrl} was not found`, 404));
 }); // Last safety net for unresolved routes

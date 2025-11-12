@@ -1,4 +1,7 @@
 import { mongoose } from "mongoose";
+import { JSDOM } from "jsdom";
+import DOMPurify from "dompurify";
+import { OperationalErrors } from "../Utils/operationalErrors.js";
 const tweetSchema = mongoose.Schema(
   {
     user: { username: { type: String }, user: { type: mongoose.Schema.ObjectId, ref: "Users" } },
@@ -29,6 +32,20 @@ tweetSchema.virtual("likesCount").get(function () {
 });
 tweetSchema.virtual("bookmarksCount").get(function () {
   return this?.bookmarks?.length || 0;
+});
+
+tweetSchema.pre("save", async function (next) {
+  const window = new JSDOM("").window;
+  const purify = DOMPurify(window);
+  this.content = purify.sanitize(this.content);
+  this.tags = this.content
+    .split(" ")
+    .filter((word) => word.startsWith("#"))
+    .map((tag) => purify.sanitize(tag));
+
+  //To follow twitter's way of how content is formatted
+  this.content = `@${this.user.username} ${this.content}`;
+  next();
 });
 
 const Tweets = mongoose.model("Tweets", tweetSchema);

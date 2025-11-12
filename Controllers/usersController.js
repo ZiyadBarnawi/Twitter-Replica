@@ -1,5 +1,6 @@
 import multer from "multer";
 import sharp from "sharp";
+import { ObjectId } from "mongodb";
 import { Users } from "./../Models/userModel.js";
 import { ApiFeatures } from "./../Utils/apiFeatures.js";
 import { catchAsync } from "../Utils/catchAsync.js";
@@ -32,11 +33,11 @@ export const uploadUserImages = userUpload.fields([
   { name: "headerPic", maxCount: 1 },
 ]);
 
-export const resizeUserImage = (req, res, next) => {
+export const resizeUserImage = catchAsync(async (req, res, next) => {
   if (!req.files) return next();
   if (req.files.profilePic) {
     req.files.profilePic[0].filename = `user-${req.token.id}-${Date.now()}.jpeg`;
-    sharp(req.files.profilePic[0].buffer)
+    await sharp(req.files.profilePic[0].buffer)
       .resize(500, 500)
       .toFormat("jpeg")
       .jpeg({ quality: 90 })
@@ -45,7 +46,7 @@ export const resizeUserImage = (req, res, next) => {
 
   if (req.files.headerPic) {
     req.files.headerPic[0].filename = `user-${req.token.id}-${Date.now()}.jpeg`;
-    sharp(req.files.headerPic[0].buffer)
+    await sharp(req.files.headerPic[0].buffer)
       .resize(1500, 500)
       .toFormat("jpeg")
       .jpeg({ quality: 90 })
@@ -53,7 +54,7 @@ export const resizeUserImage = (req, res, next) => {
   }
 
   next();
-};
+});
 
 //* Users endpoints  ////////////////////////////////////////////
 
@@ -120,8 +121,16 @@ export const updateMyUser = catchAsync(async (req, res, next) => {
         "You can't update your password in this endpoint. Please, use: users/updatePassword"
       )
     );
+
   //This filters out the object to only include certain fields
-  let updateFields = filterObj(req.body, "username", "accountName", "externalLinks", "private");
+  let updateFields = filterObj(
+    req.body,
+    "username",
+    "accountName",
+    "externalLinks",
+    "private",
+    "email"
+  );
 
   if (req.files?.profilePic[0]?.buffer) updateFields.profilePic = req.files.profilePic[0].filename;
   if (req.files?.headerPic[0]?.buffer) updateFields.headerPic = req.files.headerPic[0].filename;
@@ -144,6 +153,37 @@ export const deleteMyUser = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: null });
 });
 
+export const follow = catchAsync(async (req, res, next) => {
+  if (req.params.id === req.token.id)
+    return next(new OperationalErrors("You can't follow yourself", 400));
+  const followedUser = await Users.findById(req.params.id).select("_id");
+  if (!followedUser) return next(new OperationalErrors("No user exits with this id", 404));
+  const user = await Users.findById(req.token.id).select("+friends");
+  if (!user?.friends) user.friends = [];
+  if (user.friends.includes(req.params.id))
+    return next(new OperationalErrors("You're following this user already.", 400));
+  user.friends.push(followedUser._id);
+  user.save();
+  res.status(200).json({ status: "success", data: user });
+});
+
+export const unfollow = catchAsync(async (req, res, next) => {
+  if (req.params.id === req.token.id)
+    return next(new OperationalErrors("You can't unfollow yourself", 400));
+  const followedUser = await Users.findById(req.params.id);
+  if (!followedUser) return next(new OperationalErrors("There is no user with this id"), 400);
+  const user = await Users.findById(req.token.id).select("+friends");
+
+  const followedUserIndex = user?.friends.findIndex((userId) =>
+    userId.equals(ObjectId.createFromHexString(req.params.id))
+  );
+  if (followedUserIndex === -1)
+    return next(new OperationalErrors("There's no user with this id in your followers list"));
+  user.friends.splice(followedUserIndex, 1);
+
+  await user.save();
+  res.status(200).json({ status: "success", data: user });
+});
 export const getMe = (req, res, next) => {
   req.params.username = req.token.username;
   next();
